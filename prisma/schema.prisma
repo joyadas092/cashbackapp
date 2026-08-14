@@ -41,11 +41,10 @@ enum CashbackType {
   @@map("cashback_type")
 }
 
-// PROFIT_LINK and REFERRAL click types are added in the Phase 2 migration
-// alongside the profit_links / referrals tables they depend on.
 enum ClickType {
   DIRECT_CASHBACK
   VISIT_STORE
+  PROFIT_LINK
 
   @@map("click_type")
 }
@@ -57,13 +56,16 @@ enum ClickStatus {
   @@map("click_status")
 }
 
-// More types (PROFIT_LINK_EARNING, REFERRAL_EARNING, WITHDRAWAL, ...) are
-// added in Phase 2/3 alongside the features that produce them.
+// WITHDRAWAL is added in Phase 3 alongside the withdrawals feature.
 enum WalletTxType {
   CASHBACK_PENDING
   CASHBACK_CONFIRMED
   CASHBACK_REVERSED
   ADJUSTMENT
+  PROFIT_LINK_EARNING
+  PROFIT_LINK_EARNING_REVERSED
+  REFERRAL_EARNING
+  REFERRAL_EARNING_REVERSED
 
   @@map("wallet_tx_type")
 }
@@ -74,6 +76,32 @@ enum WalletTxStatus {
   REVERSED
 
   @@map("wallet_tx_status")
+}
+
+enum TransactionStatus {
+  PENDING
+  CONFIRMED
+  REJECTED
+  CANCELLED
+  REVERSED
+  PAID
+
+  @@map("transaction_status")
+}
+
+enum ReferralStatus {
+  ACTIVE
+  EXPIRED
+  BLOCKED
+
+  @@map("referral_status")
+}
+
+enum ProfitLinkStatus {
+  ACTIVE
+  DISABLED
+
+  @@map("profit_link_status")
 }
 
 // ---------------------------------------------------------------------------
@@ -92,22 +120,25 @@ model User {
   createdAt    DateTime   @default(now()) @map("created_at")
   updatedAt    DateTime   @updatedAt @map("updated_at")
 
-  profile           UserProfile?
+  profile            UserProfile?
   wallet             Wallet?
   clicks             Click[]
   walletTransactions WalletTransaction[]
   auditLogs          AuditLog[]
+  profitLinks        ProfitLink[]
+  referralsMade      Referral[]          @relation("ReferrerOf")
+  referredBy         Referral?           @relation("ReferredBy")
 
   @@map("users")
 }
 
 model UserProfile {
-  id                  String   @id @default(cuid())
-  userId              String   @unique @map("user_id")
-  upiId               String?  @map("upi_id")
-  bankDetails         Json?    @map("bank_details")
-  kycStatus           String?  @map("kyc_status")
-  notificationPrefs   Json     @default("{}") @map("notification_prefs")
+  id                String  @id @default(cuid())
+  userId            String  @unique @map("user_id")
+  upiId             String? @map("upi_id")
+  bankDetails       Json?   @map("bank_details")
+  kycStatus         String? @map("kyc_status")
+  notificationPrefs Json    @default("{}") @map("notification_prefs")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -117,35 +148,36 @@ model UserProfile {
 model Wallet {
   id               String   @id @default(cuid())
   userId           String   @unique @map("user_id")
-  pendingCashback  Decimal  @default(0) @db.Decimal(12, 2) @map("pending_cashback")
-  confirmedBalance Decimal  @default(0) @db.Decimal(12, 2) @map("confirmed_balance")
-  availableBalance Decimal  @default(0) @db.Decimal(12, 2) @map("available_balance")
-  withdrawn        Decimal  @default(0) @db.Decimal(12, 2) @map("withdrawn")
-  lifetimeEarned   Decimal  @default(0) @db.Decimal(12, 2) @map("lifetime_earned")
+  pendingCashback  Decimal  @default(0) @map("pending_cashback") @db.Decimal(12, 2)
+  confirmedBalance Decimal  @default(0) @map("confirmed_balance") @db.Decimal(12, 2)
+  availableBalance Decimal  @default(0) @map("available_balance") @db.Decimal(12, 2)
+  withdrawn        Decimal  @default(0) @map("withdrawn") @db.Decimal(12, 2)
+  lifetimeEarned   Decimal  @default(0) @map("lifetime_earned") @db.Decimal(12, 2)
   updatedAt        DateTime @updatedAt @map("updated_at")
 
-  user         User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   transactions WalletTransaction[]
 
   @@map("wallets")
 }
 
 model WalletTransaction {
-  id                   String         @id @default(cuid())
-  walletId             String         @map("wallet_id")
-  userId               String         @map("user_id")
-  type                 WalletTxType
-  amount               Decimal        @db.Decimal(12, 2)
-  currency             String         @default("INR")
-  source               String?
-  sourceTransactionId  String?        @map("source_transaction_id")
-  status               WalletTxStatus @default(PENDING)
-  description          String?
-  createdAt            DateTime       @default(now()) @map("created_at")
+  id                  String         @id @default(cuid())
+  walletId            String         @map("wallet_id")
+  userId              String         @map("user_id")
+  type                WalletTxType
+  amount              Decimal        @db.Decimal(12, 2)
+  currency            String         @default("INR")
+  source              String?
+  sourceTransactionId String?        @map("source_transaction_id")
+  status              WalletTxStatus @default(PENDING)
+  description         String?
+  createdAt           DateTime       @default(now()) @map("created_at")
 
   wallet Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@unique([sourceTransactionId, userId, type], name: "wallet_tx_dedupe")
   @@index([walletId, createdAt])
   @@index([sourceTransactionId])
   @@map("wallet_transactions")
@@ -178,7 +210,7 @@ model Store {
   brandColor          String?      @map("brand_color")
   categoryId          String       @map("category_id")
   cashbackType        CashbackType @default(PERCENTAGE) @map("cashback_type")
-  cashbackRate        Decimal      @db.Decimal(5, 2) @map("cashback_rate")
+  cashbackRate        Decimal      @map("cashback_rate") @db.Decimal(5, 2)
   cashbackDisplayText String       @map("cashback_display_text")
   description         String?
   terms               String?
@@ -189,15 +221,18 @@ model Store {
   cashbackEligible    Boolean      @default(true) @map("cashback_eligible")
   couponVisible       Boolean      @default(false) @map("coupon_visible")
   cuelinksCampaignId  String?      @map("cuelinks_campaign_id")
+  merchantDomains     String[]     @default([]) @map("merchant_domains")
   seoTitle            String?      @map("seo_title")
-  seoDescription       String?     @map("seo_description")
+  seoDescription      String?      @map("seo_description")
   createdAt           DateTime     @default(now()) @map("created_at")
   updatedAt           DateTime     @updatedAt @map("updated_at")
 
-  category      StoreCategory   @relation(fields: [categoryId], references: [id])
+  category      StoreCategory  @relation(fields: [categoryId], references: [id])
   campaigns     Campaign[]
   clicks        Click[]
   cashbackRules CashbackRule[]
+  profitLinks   ProfitLink[]
+  transactions  Transaction[]
 
   @@index([categoryId])
   @@index([status, featured, ranking])
@@ -211,12 +246,14 @@ model Campaign {
   name               String
   status             String    @default("active")
   commissionType     String?   @map("commission_type")
-  commissionValue    Decimal?  @db.Decimal(5, 2) @map("commission_value")
+  commissionValue    Decimal?  @map("commission_value") @db.Decimal(5, 2)
   rawPayload         Json?     @map("raw_payload")
   lastSyncedAt       DateTime? @map("last_synced_at")
 
-  store  Store   @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  clicks Click[]
+  store        Store         @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  clicks       Click[]
+  profitLinks  ProfitLink[]
+  transactions Transaction[]
 
   @@index([storeId])
   @@map("campaigns")
@@ -227,32 +264,149 @@ model Campaign {
 // ---------------------------------------------------------------------------
 
 model Click {
-  id          String      @id @default(cuid())
-  userId      String?     @map("user_id")
-  storeId     String      @map("store_id")
-  campaignId  String?     @map("campaign_id")
-  clickType   ClickType   @map("click_type")
-  originalUrl String      @map("original_url")
-  trackingUrl String      @map("tracking_url")
-  subid       String?
-  subid2      String?
-  subid3      String?
-  subid4      String?
-  subid5      String?
-  userAgent   String?     @map("user_agent")
-  deviceType  String?     @map("device_type")
-  country     String?
-  status      ClickStatus @default(TRACKED)
-  createdAt   DateTime    @default(now()) @map("created_at")
+  id           String      @id @default(cuid())
+  userId       String?     @map("user_id")
+  storeId      String      @map("store_id")
+  campaignId   String?     @map("campaign_id")
+  clickType    ClickType   @map("click_type")
+  originalUrl  String      @map("original_url")
+  trackingUrl  String      @map("tracking_url")
+  subid        String?
+  subid2       String?
+  subid3       String?
+  subid4       String?
+  subid5       String?
+  userAgent    String?     @map("user_agent")
+  deviceType   String?     @map("device_type")
+  country      String?
+  status       ClickStatus @default(TRACKED)
+  profitLinkId String?     @map("profit_link_id")
+  createdAt    DateTime    @default(now()) @map("created_at")
 
-  user     User?     @relation(fields: [userId], references: [id])
-  store    Store     @relation(fields: [storeId], references: [id])
-  campaign Campaign? @relation(fields: [campaignId], references: [id])
+  user         User?         @relation(fields: [userId], references: [id])
+  store        Store         @relation(fields: [storeId], references: [id])
+  campaign     Campaign?     @relation(fields: [campaignId], references: [id])
+  profitLink   ProfitLink?   @relation(fields: [profitLinkId], references: [id])
+  transactions Transaction[]
 
   @@index([userId])
   @@index([storeId])
   @@index([createdAt])
+  @@index([profitLinkId])
   @@map("clicks")
+}
+
+// ---------------------------------------------------------------------------
+// Share & Earn (profit links)
+// ---------------------------------------------------------------------------
+
+model ProfitLink {
+  id             String           @id @default(cuid())
+  code           String           @unique
+  userId         String           @map("user_id")
+  storeId        String           @map("store_id")
+  campaignId     String?          @map("campaign_id")
+  originalUrl    String           @map("original_url")
+  destinationUrl String           @map("destination_url")
+  clickCount     Int              @default(0) @map("click_count")
+  status         ProfitLinkStatus @default(ACTIVE)
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  store    Store     @relation(fields: [storeId], references: [id])
+  campaign Campaign? @relation(fields: [campaignId], references: [id])
+  clicks   Click[]
+
+  @@index([userId])
+  @@index([code])
+  @@map("profit_links")
+}
+
+// ---------------------------------------------------------------------------
+// Refer & Earn
+// ---------------------------------------------------------------------------
+
+model Referral {
+  id             String         @id @default(cuid())
+  referrerId     String         @map("referrer_id")
+  referredUserId String         @unique @map("referred_user_id")
+  code           String
+  status         ReferralStatus @default(ACTIVE)
+  totalEarned    Decimal        @default(0) @map("total_earned") @db.Decimal(12, 2)
+  createdAt      DateTime       @default(now()) @map("created_at")
+
+  referrer     User @relation("ReferrerOf", fields: [referrerId], references: [id])
+  referredUser User @relation("ReferredBy", fields: [referredUserId], references: [id])
+
+  @@index([referrerId])
+  @@map("referrals")
+}
+
+model ReferralRule {
+  id              String   @id @default(cuid())
+  fixedBonus      Decimal? @map("fixed_bonus") @db.Decimal(12, 2)
+  durationDays    Int?     @map("duration_days")
+  maxTotalEarning Decimal? @map("max_total_earning") @db.Decimal(12, 2)
+  minOrderValue   Decimal? @map("min_order_value") @db.Decimal(12, 2)
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("referral_rules")
+}
+
+// ---------------------------------------------------------------------------
+// Transactions / Cuelinks postback
+// ---------------------------------------------------------------------------
+
+model Transaction {
+  id                    String            @id @default(cuid())
+  storeId               String            @map("store_id")
+  clickId               String            @map("click_id")
+  campaignId            String?           @map("campaign_id")
+  cashbackRuleId        String?           @map("cashback_rule_id")
+  cuelinksTransactionId String            @map("cuelinks_transaction_id")
+  orderId               String?           @map("order_id")
+  saleAmount            Decimal           @map("sale_amount") @db.Decimal(12, 2)
+  currency              String            @default("INR")
+  commissionAmount      Decimal           @map("commission_amount") @db.Decimal(12, 2)
+  customerAmount        Decimal           @default(0) @map("customer_amount") @db.Decimal(12, 2)
+  profitLinkAmount      Decimal           @default(0) @map("profit_link_amount") @db.Decimal(12, 2)
+  referralAmount        Decimal           @default(0) @map("referral_amount") @db.Decimal(12, 2)
+  platformAmount        Decimal           @default(0) @map("platform_amount") @db.Decimal(12, 2)
+  status                TransactionStatus @default(PENDING)
+  rawPostbackPayload    Json?             @map("raw_postback_payload")
+  transactionDate       DateTime?         @map("transaction_date")
+  confirmedAt           DateTime?         @map("confirmed_at")
+  reversedAt            DateTime?         @map("reversed_at")
+  createdAt             DateTime          @default(now()) @map("created_at")
+  updatedAt             DateTime          @updatedAt @map("updated_at")
+
+  store        Store         @relation(fields: [storeId], references: [id])
+  click        Click         @relation(fields: [clickId], references: [id])
+  campaign     Campaign?     @relation(fields: [campaignId], references: [id])
+  cashbackRule CashbackRule? @relation(fields: [cashbackRuleId], references: [id])
+
+  @@unique([storeId, cuelinksTransactionId])
+  @@index([clickId])
+  @@index([status])
+  @@map("transactions")
+}
+
+model CuelinksPostback {
+  id            String   @id @default(cuid())
+  rawParams     Json     @map("raw_params")
+  tokenValid    Boolean  @map("token_valid")
+  clickId       String?  @map("click_id")
+  transactionId String?  @map("transaction_id")
+  processResult String   @map("process_result")
+  errorMessage  String?  @map("error_message")
+  receivedAt    DateTime @default(now()) @map("received_at")
+
+  @@index([clickId])
+  @@index([receivedAt])
+  @@map("cuelinks_postbacks")
 }
 
 // ---------------------------------------------------------------------------
@@ -262,19 +416,20 @@ model Click {
 model CashbackRule {
   id            String   @id @default(cuid())
   storeId       String   @map("store_id")
-  customerPct   Decimal  @db.Decimal(5, 2) @map("customer_pct")
-  profitLinkPct Decimal  @db.Decimal(5, 2) @map("profit_link_pct")
-  referralPct   Decimal  @db.Decimal(5, 2) @map("referral_pct")
-  platformPct   Decimal  @db.Decimal(5, 2) @map("platform_pct")
-  fixedAmount   Decimal? @db.Decimal(12, 2) @map("fixed_amount")
-  maxCashback   Decimal? @db.Decimal(12, 2) @map("max_cashback")
-  minOrderValue Decimal? @db.Decimal(12, 2) @map("min_order_value")
+  customerPct   Decimal  @map("customer_pct") @db.Decimal(5, 2)
+  profitLinkPct Decimal  @map("profit_link_pct") @db.Decimal(5, 2)
+  referralPct   Decimal  @map("referral_pct") @db.Decimal(5, 2)
+  platformPct   Decimal  @map("platform_pct") @db.Decimal(5, 2)
+  fixedAmount   Decimal? @map("fixed_amount") @db.Decimal(12, 2)
+  maxCashback   Decimal? @map("max_cashback") @db.Decimal(12, 2)
+  minOrderValue Decimal? @map("min_order_value") @db.Decimal(12, 2)
   validityDays  Int?     @map("validity_days")
   isActive      Boolean  @default(true) @map("is_active")
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
-  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  store        Store         @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
 
   @@index([storeId])
   @@index([isActive])
@@ -296,14 +451,14 @@ model Setting {
 }
 
 model AuditLog {
-  id           String   @id @default(cuid())
-  actorUserId  String?  @map("actor_user_id")
-  action       String
-  entityType   String   @map("entity_type")
-  entityId     String?  @map("entity_id")
-  metadata     Json?
-  ipAddress    String?  @map("ip_address")
-  createdAt    DateTime @default(now()) @map("created_at")
+  id          String   @id @default(cuid())
+  actorUserId String?  @map("actor_user_id")
+  action      String
+  entityType  String   @map("entity_type")
+  entityId    String?  @map("entity_id")
+  metadata    Json?
+  ipAddress   String?  @map("ip_address")
+  createdAt   DateTime @default(now()) @map("created_at")
 
   actor User? @relation(fields: [actorUserId], references: [id])
 

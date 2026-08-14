@@ -30,6 +30,15 @@ const config: Config = {
         "hero-gradient":
           "radial-gradient(circle at 20% 20%, rgba(124,58,237,0.35), transparent 55%), radial-gradient(circle at 80% 0%, rgba(34,211,238,0.25), transparent 50%), linear-gradient(180deg, #05060f 0%, #0a0c1c 100%)",
       },
+      keyframes: {
+        "gradient-x": {
+          "0%, 100%": { backgroundPosition: "0% 50%" },
+          "50%": { backgroundPosition: "100% 50%" },
+        },
+      },
+      animation: {
+        "gradient-x": "gradient-x 6s ease infinite",
+      },
     },
   },
   plugins: [],

@@ -56,12 +56,16 @@ export default async function DashboardPage() {
             Shop & Earn
           </Button>
         </Link>
-        <Button variant="outline" className="w-full" disabled title="Coming in a later phase">
-          Share & Earn
-        </Button>
-        <Button variant="outline" className="w-full" disabled title="Coming in a later phase">
-          Refer & Earn
-        </Button>
+        <Link href="/dashboard/share-earn">
+          <Button variant="outline" className="w-full">
+            Share & Earn
+          </Button>
+        </Link>
+        <Link href="/dashboard/refer">
+          <Button variant="outline" className="w-full">
+            Refer & Earn
+          </Button>
+        </Link>
         <Button variant="outline" className="w-full" disabled title="Coming in a later phase">
           Withdraw
         </Button>
@@ -79,7 +83,11 @@ export default async function DashboardPage() {
               <li key={click.id} className="flex items-center justify-between py-3 text-sm">
                 <span>{click.store.name}</span>
                 <span className="text-white/50">
-                  {click.clickType === "DIRECT_CASHBACK" ? "Direct Cashback" : "Visit Store"}
+                  {click.clickType === "DIRECT_CASHBACK"
+                    ? "Direct Cashback"
+                    : click.clickType === "PROFIT_LINK"
+                      ? "Profit Link"
+                      : "Visit Store"}
                 </span>
                 <span className="text-white/40">
                   {new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeStyle: "short" }).format(

@@ -2,11 +2,13 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { Button } from "@/components/ui/Button";
 import { StoreCard } from "@/components/store/StoreCard";
+import { DealCard } from "@/components/store/DealCard";
 import { CategoryCard } from "@/components/store/CategoryCard";
 import { SearchBar } from "@/components/shared/SearchBar";
+import { AnimatedNumber } from "@/components/shared/AnimatedNumber";
 
 export default async function HomePage() {
-  const [featuredStores, categories, highestCashback] = await Promise.all([
+  const [featuredStores, categories, highestCashback, storeCount] = await Promise.all([
     prisma.store.findMany({
       where: { status: "ACTIVE", featured: true },
       orderBy: { ranking: "desc" },
@@ -18,15 +20,29 @@ export default async function HomePage() {
       orderBy: { cashbackRate: "desc" },
       take: 8,
     }),
+    prisma.store.count({ where: { status: "ACTIVE" } }),
   ]);
+  const topCashbackRate = Math.round(Number(highestCashback[0]?.cashbackRate ?? 0));
 
   return (
     <div className="mx-auto max-w-6xl px-4">
       {/* Hero */}
-      <section className="flex flex-col items-center gap-6 py-20 text-center">
-        <h1 className="max-w-2xl text-4xl font-extrabold leading-tight sm:text-6xl">
+      <section className="relative flex flex-col items-center gap-6 overflow-hidden py-20 text-center">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -top-24 left-1/2 -z-10 h-72 w-72 -translate-x-[140%] rounded-full bg-violet-600/30 blur-3xl"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -top-10 left-1/2 -z-10 h-64 w-64 translate-x-[60%] rounded-full bg-cyan-400/20 blur-3xl"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute top-40 left-1/2 -z-10 h-56 w-56 -translate-x-1/2 rounded-full bg-cashlime-500/10 blur-3xl"
+        />
+        <h1 className="relative max-w-2xl text-4xl font-extrabold leading-tight sm:text-6xl">
           Shop Smarter. Get Cashback.{" "}
-          <span className="bg-gradient-to-r from-violet-400 via-cyan-300 to-cashlime-400 bg-clip-text text-transparent">
+          <span className="animate-gradient-x bg-gradient-to-r from-violet-400 via-cyan-300 to-cashlime-400 bg-[length:200%_auto] bg-clip-text text-transparent">
             Earn More.
           </span>
         </h1>
@@ -47,6 +63,26 @@ export default async function HomePage() {
         </div>
         <div className="mt-4 w-full max-w-lg">
           <SearchBar />
+        </div>
+        <div className="relative mt-4 flex gap-8 text-center">
+          <div>
+            <div className="text-2xl font-extrabold text-cashlime-400">
+              <AnimatedNumber value={storeCount} suffix="+" />
+            </div>
+            <div className="text-xs text-white/50">Partner Stores</div>
+          </div>
+          <div>
+            <div className="text-2xl font-extrabold text-cyan-300">
+              <AnimatedNumber value={topCashbackRate} suffix="%" />
+            </div>
+            <div className="text-xs text-white/50">Top Cashback</div>
+          </div>
+          <div>
+            <div className="text-2xl font-extrabold text-violet-400">
+              <AnimatedNumber value={categories.length} />
+            </div>
+            <div className="text-xs text-white/50">Categories</div>
+          </div>
         </div>
       </section>
 
@@ -97,6 +133,24 @@ export default async function HomePage() {
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           {highestCashback.map((store) => (
             <StoreCard
+              key={store.id}
+              store={{
+                slug: store.slug,
+                name: store.name,
+                logoUrl: store.logoUrl,
+                cashbackDisplayText: store.cashbackDisplayText,
+              }}
+            />
+          ))}
+        </div>
+      </section>
+
+      {/* Trending deals */}
+      <section className="py-10">
+        <h2 className="mb-4 text-xl font-bold">Trending Deals</h2>
+        <div className="flex gap-4 overflow-x-auto pb-2 sm:grid sm:grid-cols-4 sm:overflow-visible">
+          {highestCashback.slice(0, 4).map((store) => (
+            <DealCard
               key={store.id}
               store={{
                 slug: store.slug,

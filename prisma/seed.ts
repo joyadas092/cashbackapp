@@ -19,6 +19,7 @@ const STORES: Array<{
   cashbackDisplayText: string;
   rule: { customerPct: number; profitLinkPct: number; referralPct: number; platformPct: number };
   featured?: boolean;
+  domains: string[];
 }> = [
   {
     name: "Flipkart",
@@ -28,6 +29,7 @@ const STORES: Array<{
     cashbackDisplayText: "Up to 8% Cashback",
     rule: { customerPct: 70, profitLinkPct: 10, referralPct: 5, platformPct: 15 },
     featured: true,
+    domains: ["flipkart.com", "www.flipkart.com", "dl.flipkart.com"],
   },
   {
     name: "Amazon",
@@ -37,6 +39,7 @@ const STORES: Array<{
     cashbackDisplayText: "Up to 5% Cashback",
     rule: { customerPct: 65, profitLinkPct: 15, referralPct: 5, platformPct: 15 },
     featured: true,
+    domains: ["amazon.in", "www.amazon.in"],
   },
   {
     name: "Myntra",
@@ -46,6 +49,7 @@ const STORES: Array<{
     cashbackDisplayText: "Up to 10% Cashback",
     rule: { customerPct: 60, profitLinkPct: 20, referralPct: 5, platformPct: 15 },
     featured: true,
+    domains: ["myntra.com", "www.myntra.com"],
   },
   {
     name: "AJIO",
@@ -54,6 +58,7 @@ const STORES: Array<{
     cashbackRate: 9,
     cashbackDisplayText: "Up to 9% Cashback",
     rule: { customerPct: 60, profitLinkPct: 15, referralPct: 5, platformPct: 20 },
+    domains: ["ajio.com", "www.ajio.com"],
   },
   {
     name: "Nykaa",
@@ -62,6 +67,7 @@ const STORES: Array<{
     cashbackRate: 7,
     cashbackDisplayText: "Up to 7% Cashback",
     rule: { customerPct: 55, profitLinkPct: 20, referralPct: 10, platformPct: 15 },
+    domains: ["nykaa.com", "www.nykaa.com"],
   },
   {
     name: "Tata CLiQ",
@@ -70,6 +76,7 @@ const STORES: Array<{
     cashbackRate: 6,
     cashbackDisplayText: "Up to 6% Cashback",
     rule: { customerPct: 60, profitLinkPct: 15, referralPct: 5, platformPct: 20 },
+    domains: ["tatacliq.com", "www.tatacliq.com"],
   },
   {
     name: "MakeMyTrip",
@@ -78,6 +85,7 @@ const STORES: Array<{
     cashbackRate: 4,
     cashbackDisplayText: "Up to 4% Cashback",
     rule: { customerPct: 50, profitLinkPct: 25, referralPct: 10, platformPct: 15 },
+    domains: ["makemytrip.com", "www.makemytrip.com"],
   },
   {
     name: "Booking.com",
@@ -86,6 +94,7 @@ const STORES: Array<{
     cashbackRate: 3,
     cashbackDisplayText: "Up to 3% Cashback",
     rule: { customerPct: 50, profitLinkPct: 20, referralPct: 10, platformPct: 20 },
+    domains: ["booking.com", "www.booking.com"],
   },
   {
     name: "Swiggy",
@@ -94,6 +103,7 @@ const STORES: Array<{
     cashbackRate: 5,
     cashbackDisplayText: "Up to 5% Cashback",
     rule: { customerPct: 40, profitLinkPct: 30, referralPct: 10, platformPct: 20 },
+    domains: ["swiggy.com", "www.swiggy.com"],
   },
   {
     name: "Goibibo",
@@ -102,6 +112,7 @@ const STORES: Array<{
     cashbackRate: 4,
     cashbackDisplayText: "Up to 4% Cashback",
     rule: { customerPct: 55, profitLinkPct: 20, referralPct: 5, platformPct: 20 },
+    domains: ["goibibo.com", "www.goibibo.com"],
   },
 ];
 
@@ -135,17 +146,22 @@ async function main() {
         cashbackDisplayText: s.cashbackDisplayText,
         featured: s.featured ?? false,
         cashbackType: CashbackType.PERCENTAGE,
+        logoUrl: `/logos/${s.slug}.svg`,
+        merchantDomains: s.domains,
+        profitLinkEligible: true,
       },
       create: {
         name: s.name,
         slug: s.slug,
-        logoUrl: `https://placehold.co/128x128/1a1c2e/ffffff?text=${encodeURIComponent(s.name[0])}`,
+        logoUrl: `/logos/${s.slug}.svg`,
         categoryId,
         cashbackType: CashbackType.PERCENTAGE,
         cashbackRate: s.cashbackRate,
         cashbackDisplayText: s.cashbackDisplayText,
         featured: s.featured ?? false,
         cuelinksCampaignId: `stub_${s.slug}`,
+        merchantDomains: s.domains,
+        profitLinkEligible: true,
       },
     });
 
@@ -225,6 +241,20 @@ async function main() {
       description: "Minimum withdrawal amount in INR",
     },
   });
+
+  console.log("Seeding referral rule...");
+  const existingReferralRule = await prisma.referralRule.findFirst({ where: { isActive: true } });
+  if (!existingReferralRule) {
+    await prisma.referralRule.create({
+      data: {
+        durationDays: 90,
+        maxTotalEarning: 500,
+        minOrderValue: null,
+        fixedBonus: null,
+        isActive: true,
+      },
+    });
+  }
 
   console.log("Seed complete.");
   console.log("Admin login: admin@example.com / Admin@12345");

@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
@@ -12,6 +13,11 @@ import { buildSubIds } from "@/lib/attribution/subid";
  *
  * ?intent=visit     -> no user attribution, even if logged in (spec section 9)
  * ?intent=cashback  -> requires a session; attaches subid attribution
+ *
+ * The click's own id is generated BEFORE calling Cuelinks and used as the
+ * subid — this is the only reliable way to match a later postback back to
+ * this specific click (a user-id-keyed subid can't disambiguate which of a
+ * user's many clicks a transaction belongs to). See src/lib/attribution/subid.ts.
  */
 export async function GET(
   req: NextRequest,
@@ -39,10 +45,11 @@ export async function GET(
     return NextResponse.redirect(new URL(`/stores/${store.slug}`, req.url));
   }
 
+  const clickId = randomUUID();
   const cuelinks = getCuelinksClient();
   const subIds =
     intent === "cashback"
-      ? buildSubIds({ userId, linkType: "direct_cashback" })
+      ? buildSubIds({ clickId, userId, linkType: "direct_cashback" })
       : {};
 
   const conversion = await cuelinks.convertLink({
@@ -53,6 +60,7 @@ export async function GET(
 
   await prisma.click.create({
     data: {
+      id: clickId,
       userId: intent === "cashback" ? userId : null,
       storeId: store.id,
       campaignId: campaign?.id,
@@ -62,7 +70,6 @@ export async function GET(
       subid: subIds.subid,
       subid2: subIds.subid2,
       subid3: subIds.subid3,
-      subid4: subIds.subid4,
       subid5: subIds.subid5,
       userAgent: req.headers.get("user-agent") ?? undefined,
     },

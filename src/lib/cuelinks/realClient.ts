@@ -8,21 +8,16 @@ import type {
 } from "./types";
 
 /**
- * Cuelinks Publisher API v3 client skeleton.
+ * Cuelinks Publisher API v3 client.
  *
- * NOT independently verified against live Cuelinks docs during this build
- * (no network/docs access at scaffold time). Before first real use:
- *   - Confirm exact base URL / endpoint paths at developers.cuelinks.com
- *   - Confirm auth header format for a v3 scoped key (Bearer vs custom header)
- *   - Confirm exact request/response field names for link conversion,
- *     campaign listing, and transactions/reports endpoints
- *   - Confirm subid1-5 parameter names in the link-conversion payload
- *
- * Do not treat this file as a verified integration until each TODO below
- * has been checked against the current Cuelinks API v3 documentation.
+ * Verified 2026-08-14 against developers.cuelinks.com (base URL, auth header
+ * format, and the /links/convert, /campaigns, /transactions request and
+ * response shapes were fetched directly from the live docs, not guessed).
+ * Not independently tested against a live account — treat as verified
+ * *shape*, not a confirmed-working integration, until exercised for real.
  */
 
-const BASE_URL = "https://www.cuelinks.com/api/v3"; // TODO: verify exact base URL
+const BASE_URL = "https://developers.cuelinks.com/pub_api/v3";
 
 function getApiKey(): string {
   const key = process.env.CUELINKS_API_KEY;
@@ -38,8 +33,7 @@ async function cuelinksFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE_URL}${path}`, {
     ...init,
     headers: {
-      // TODO: verify header name/scheme for v3 scoped keys (Authorization: Bearer <key>?)
-      Authorization: `Bearer ${getApiKey()}`,
+      Authorization: `Token ${getApiKey()}`,
       "Content-Type": "application/json",
       ...(init?.headers ?? {}),
     },
@@ -53,24 +47,69 @@ async function cuelinksFetch<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+interface ConvertLinkResponse {
+  data: {
+    tracking_url: string;
+    short_url?: string;
+    affiliated: boolean;
+    original_url: string;
+    campaign: { id: number; name: string } | null;
+  };
+}
+
+interface CampaignsListResponse {
+  data: Array<{
+    id: number;
+    name: string;
+    domain: string;
+    access_status: string;
+    campaign_type: string;
+    payout: string;
+  }>;
+}
+
+interface TransactionsListResponse {
+  data: Array<{
+    id: number;
+    campaign_id: number;
+    order_id: string | null;
+    merchant_reference_id: string | null;
+    sale_amount: string | null;
+    user_commission: string | null;
+    currency: string;
+    status: string;
+    sub_id: string | null;
+    transaction_date: string;
+  }>;
+}
+
 export const realClient: CuelinksClient = {
   async listCampaigns(): Promise<CuelinksCampaign[]> {
-    // TODO: verify endpoint path and response shape
-    return cuelinksFetch<CuelinksCampaign[]>("/campaigns");
+    const res = await cuelinksFetch<CampaignsListResponse>("/campaigns");
+    return res.data.map((c) => ({
+      campaignId: String(c.id),
+      name: c.name,
+      status: c.access_status === "approved" ? "active" : "inactive",
+    }));
   },
 
   async getCampaign(campaignId: string): Promise<CuelinksCampaign | null> {
-    // TODO: verify endpoint path
-    return cuelinksFetch<CuelinksCampaign | null>(`/campaigns/${campaignId}`);
+    const res = await cuelinksFetch<CampaignsListResponse>(`/campaigns?q=${encodeURIComponent(campaignId)}`);
+    const match = res.data.find((c) => String(c.id) === campaignId);
+    if (!match) return null;
+    return {
+      campaignId: String(match.id),
+      name: match.name,
+      status: match.access_status === "approved" ? "active" : "inactive",
+    };
   },
 
   async convertLink(req: LinkConversionRequest): Promise<LinkConversionResult> {
-    // TODO: verify endpoint path and exact request body field names
-    return cuelinksFetch<LinkConversionResult>("/links/convert", {
+    const res = await cuelinksFetch<ConvertLinkResponse>("/links/convert", {
       method: "POST",
       body: JSON.stringify({
         url: req.destinationUrl,
-        campaign_id: req.campaignId,
+        channel_id: process.env.CUELINKS_CHANNEL_ID || undefined,
         subid: req.subid,
         subid2: req.subid2,
         subid3: req.subid3,
@@ -78,23 +117,40 @@ export const realClient: CuelinksClient = {
         subid5: req.subid5,
       }),
     });
+
+    return {
+      trackingUrl: res.data.tracking_url,
+      campaignId: res.data.campaign ? String(res.data.campaign.id) : req.campaignId,
+      merchantName: res.data.campaign?.name,
+    };
   },
 
   async getTransactions(params: GetTransactionsParams): Promise<CuelinksTransaction[]> {
-    // TODO: verify endpoint path and query param names
     const qs = new URLSearchParams();
-    if (params.fromDate) qs.set("from_date", params.fromDate);
-    if (params.toDate) qs.set("to_date", params.toDate);
+    if (params.fromDate) qs.set("start_date", params.fromDate);
+    if (params.toDate) qs.set("end_date", params.toDate);
     if (params.page) qs.set("page", String(params.page));
-    return cuelinksFetch<CuelinksTransaction[]>(`/transactions?${qs.toString()}`);
+    const res = await cuelinksFetch<TransactionsListResponse>(`/transactions?${qs.toString()}`);
+    return res.data.map((t) => ({
+      cuelinksTransactionId: String(t.id),
+      campaignId: String(t.campaign_id),
+      orderId: t.order_id ?? t.merchant_reference_id ?? undefined,
+      saleAmount: t.sale_amount ? Number(t.sale_amount) : 0,
+      commission: t.user_commission ? Number(t.user_commission) : 0,
+      currency: t.currency,
+      status: t.status,
+      subid: t.sub_id ?? undefined,
+      transactionDate: t.transaction_date,
+    }));
   },
 
   async getReports(params: GetTransactionsParams): Promise<CuelinksTransaction[]> {
-    // TODO: verify endpoint path and query param names
-    const qs = new URLSearchParams();
-    if (params.fromDate) qs.set("from_date", params.fromDate);
-    if (params.toDate) qs.set("to_date", params.toDate);
-    if (params.page) qs.set("page", String(params.page));
-    return cuelinksFetch<CuelinksTransaction[]>(`/reports?${qs.toString()}`);
+    // Cuelinks v3 splits this into /reports/performance and /reports/campaigns,
+    // neither of which maps cleanly onto our per-transaction CuelinksTransaction
+    // shape (they're aggregate reports, not transaction lists). Falling back
+    // to /transactions here, which is what Phase 4's reconciliation job
+    // actually needs (backfill/reconcile individual transactions) — revisit
+    // if aggregate reporting is needed later.
+    return this.getTransactions(params);
   },
 };

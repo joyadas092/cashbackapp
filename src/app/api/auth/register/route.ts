@@ -34,11 +34,37 @@ export async function POST(req: NextRequest) {
     referralCode = generateReferralCode();
   }
 
-  const user = await prisma.user.create({
-    data: { name, email, passwordHash, referralCode },
+  // Referral attribution: an explicit code in the request body wins; falls
+  // back to the referral_code cookie set by /refer/[code] for users who
+  // browsed before registering. An unresolvable/self-referential code is
+  // silently ignored rather than failing registration — referral capture is
+  // a bonus, not a hard registration requirement (spec section 4: prevent
+  // self-referral and manipulation, don't block signup over it).
+  const submittedCode = parsed.data.referralCode ?? req.cookies.get("referral_code")?.value;
+  const referrer = submittedCode
+    ? await prisma.user.findUnique({ where: { referralCode: submittedCode.toUpperCase() } })
+    : null;
+
+  const user = await prisma.$transaction(async (tx) => {
+    const created = await tx.user.create({
+      data: { name, email, passwordHash, referralCode },
+    });
+    await tx.wallet.create({ data: { userId: created.id } });
+
+    if (referrer && referrer.id !== created.id) {
+      await tx.referral.create({
+        data: {
+          referrerId: referrer.id,
+          referredUserId: created.id,
+          code: referrer.referralCode,
+        },
+      });
+    }
+
+    return created;
   });
 
-  await prisma.wallet.create({ data: { userId: user.id } });
-
-  return NextResponse.json({ id: user.id, email: user.email }, { status: 201 });
+  const res = NextResponse.json({ id: user.id, email: user.email }, { status: 201 });
+  res.cookies.delete("referral_code");
+  return res;
 }
