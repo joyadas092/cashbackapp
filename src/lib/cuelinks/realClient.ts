@@ -62,8 +62,10 @@ interface CampaignsListResponse {
     id: number;
     name: string;
     domain: string;
+    image?: string | null;
     access_status: string;
     campaign_type: string;
+    payout_type?: string;
     payout: string;
   }>;
 }
@@ -90,6 +92,10 @@ export const realClient: CuelinksClient = {
       campaignId: String(c.id),
       name: c.name,
       status: c.access_status === "approved" ? "active" : "inactive",
+      imageUrl: c.image ?? undefined,
+      domain: c.domain,
+      payoutType: c.payout_type,
+      payout: c.payout,
     }));
   },
 
@@ -101,6 +107,10 @@ export const realClient: CuelinksClient = {
       campaignId: String(match.id),
       name: match.name,
       status: match.access_status === "approved" ? "active" : "inactive",
+      imageUrl: match.image ?? undefined,
+      domain: match.domain,
+      payoutType: match.payout_type,
+      payout: match.payout,
     };
   },
 

@@ -4,6 +4,11 @@ export interface CuelinksCampaign {
   status: "active" | "inactive";
   commissionType?: "percentage" | "fixed";
   commissionValue?: number;
+  /** Cuelinks-hosted campaign/merchant logo, when available. */
+  imageUrl?: string;
+  domain?: string;
+  payoutType?: string;
+  payout?: string;
 }
 
 export interface LinkConversionRequest {

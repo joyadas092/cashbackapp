@@ -4,8 +4,8 @@ const ITEMS = [
   { href: "/", label: "Home", icon: "🏠" },
   { href: "/stores", label: "Stores", icon: "🛍️" },
   { href: "/stores?featured=1", label: "Earn", icon: "💰" },
-  { href: "/dashboard", label: "Activity", icon: "📊" },
-  { href: "/dashboard", label: "Profile", icon: "👤" },
+  { href: "/dashboard/activity", label: "Activity", icon: "📊" },
+  { href: "/dashboard/profile", label: "Profile", icon: "👤" },
 ];
 
 export function BottomNav() {

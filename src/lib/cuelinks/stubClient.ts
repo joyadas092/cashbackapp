@@ -11,12 +11,45 @@ import type {
  * Deterministic fake Cuelinks client. No network calls. Lets the whole
  * click/redirect flow be demoed and tested without live Cuelinks credentials.
  */
+// Fake campaigns so the admin campaign browser has something to render
+// without a live CUELINKS_API_KEY. Not linked to real merchants.
+const STUB_CAMPAIGNS: CuelinksCampaign[] = [
+  {
+    campaignId: "stub_campaign_1001",
+    name: "Sample Fashion Co.",
+    status: "active",
+    imageUrl: "/logos/myntra.svg",
+    domain: "samplefashion.example",
+    payoutType: "Per Sale",
+    payout: "6.5",
+  },
+  {
+    campaignId: "stub_campaign_1002",
+    name: "Sample Electronics Hub",
+    status: "active",
+    imageUrl: "/logos/flipkart.svg",
+    domain: "sampleelectronics.example",
+    payoutType: "Per Sale",
+    payout: "4.0",
+  },
+  {
+    campaignId: "stub_campaign_1003",
+    name: "Sample Travel Deals",
+    status: "active",
+    domain: "sampletravel.example",
+    payoutType: "Per Sale",
+    payout: "3.0",
+  },
+];
+
 export const stubClient: CuelinksClient = {
   async listCampaigns(): Promise<CuelinksCampaign[]> {
-    return [];
+    return STUB_CAMPAIGNS;
   },
 
   async getCampaign(campaignId: string): Promise<CuelinksCampaign | null> {
+    const stubCampaign = STUB_CAMPAIGNS.find((c) => c.campaignId === campaignId);
+    if (stubCampaign) return stubCampaign;
     return {
       campaignId,
       name: campaignId.replace(/^stub_/, ""),

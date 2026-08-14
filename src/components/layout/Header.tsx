@@ -16,9 +16,24 @@ export async function Header() {
           <Link href="/stores" className="hover:text-white">
             Stores
           </Link>
-          <Link href="/dashboard" className="hover:text-white">
-            Dashboard
-          </Link>
+          {session?.user && (
+            <>
+              <Link href="/dashboard" className="hover:text-white">
+                Dashboard
+              </Link>
+              <Link href="/dashboard/activity" className="hover:text-white">
+                Activity
+              </Link>
+              <Link href="/dashboard/profile" className="hover:text-white">
+                Profile
+              </Link>
+            </>
+          )}
+          {session?.user?.role === "ADMIN" && (
+            <Link href="/admin" className="text-violet-400 hover:text-violet-300">
+              Admin
+            </Link>
+          )}
         </nav>
 
         {session?.user ? (

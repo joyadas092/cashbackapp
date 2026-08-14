@@ -1,20 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
-import type { WalletTxType } from "@prisma/client";
 
 const PAGE_SIZE = 20;
-
-const VALID_TYPES: WalletTxType[] = [
-  "CASHBACK_PENDING",
-  "CASHBACK_CONFIRMED",
-  "CASHBACK_REVERSED",
-  "ADJUSTMENT",
-  "PROFIT_LINK_EARNING",
-  "PROFIT_LINK_EARNING_REVERSED",
-  "REFERRAL_EARNING",
-  "REFERRAL_EARNING_REVERSED",
-];
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -23,35 +11,30 @@ export async function GET(req: NextRequest) {
   }
 
   const page = Math.max(1, parseInt(req.nextUrl.searchParams.get("page") ?? "1", 10) || 1);
-
-  const typeParam = req.nextUrl.searchParams.get("type");
-  const requestedTypes = typeParam
-    ? typeParam.split(",").filter((t): t is WalletTxType => VALID_TYPES.includes(t as WalletTxType))
-    : undefined;
+  const storeSlug = req.nextUrl.searchParams.get("store") ?? undefined;
 
   const where = {
     userId: session.user.id,
-    ...(requestedTypes && requestedTypes.length > 0 ? { type: { in: requestedTypes } } : {}),
+    ...(storeSlug ? { store: { slug: storeSlug } } : {}),
   };
 
   const [items, total] = await Promise.all([
-    prisma.walletTransaction.findMany({
+    prisma.click.findMany({
       where,
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
+      include: { store: { select: { name: true, slug: true, logoUrl: true } } },
     }),
-    prisma.walletTransaction.count({ where }),
+    prisma.click.count({ where }),
   ]);
 
   return NextResponse.json({
     items: items.map((item) => ({
       id: item.id,
-      type: item.type,
-      amount: Number(item.amount),
-      currency: item.currency,
+      clickType: item.clickType,
       status: item.status,
-      description: item.description,
+      store: item.store,
       createdAt: item.createdAt,
     })),
     page,
