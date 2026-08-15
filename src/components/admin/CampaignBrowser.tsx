@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { CashbackRuleEditor, DEFAULT_RULE, type CashbackRuleValue } from "./CashbackRuleEditor";
+import { publicLogoUrl } from "@/lib/logo";
 
 interface Campaign {
   campaignId: string;
@@ -245,7 +246,9 @@ function CreateForm({
   const [name, setName] = useState(campaign.name);
   const [slug, setSlug] = useState(slugify(campaign.name));
   const [categoryId, setCategoryId] = useState(categories[0]?.id ?? "");
-  const [logoUrl, setLogoUrl] = useState(campaign.imageUrl ?? "");
+  const [logoUrl, setLogoUrl] = useState(
+    campaign.imageUrl ?? (campaign.domain ? publicLogoUrl(campaign.domain) : "")
+  );
   const [cashbackRate, setCashbackRate] = useState(campaign.payout ? Number(campaign.payout) : 5);
   const [cashbackDisplayText, setCashbackDisplayText] = useState(
     campaign.payout ? `Up to ${campaign.payout}% Cashback` : "Up to 5% Cashback"
@@ -315,7 +318,10 @@ function CreateForm({
           </select>
         </label>
         <label className="flex flex-col gap-1 text-xs text-white/60">
-          Logo URL
+          Logo URL{" "}
+          <span className="text-white/30">
+            {campaign.imageUrl ? "(from Cuelinks)" : "(auto-fetched, override if needed)"}
+          </span>
           <Input value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} required />
         </label>
         <label className="flex flex-col gap-1 text-xs text-white/60">

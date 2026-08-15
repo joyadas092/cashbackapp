@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireAdminSession } from "@/lib/adminAuth";
 import { prisma } from "@/lib/db";
 import { StoreStatusToggle } from "@/components/admin/StoreStatusToggle";
+import { StoreLogoEditor } from "@/components/admin/StoreLogoEditor";
 
 export default async function AdminStoresPage() {
   await requireAdminSession("/admin/stores");
@@ -20,6 +21,7 @@ export default async function AdminStoresPage() {
             <tr>
               <th className="px-4 py-3">Store</th>
               <th className="px-4 py-3">Category</th>
+              <th className="px-4 py-3">Store Logo</th>
               <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3">Rate</th>
               <th className="px-4 py-3">Actions</th>
@@ -30,6 +32,9 @@ export default async function AdminStoresPage() {
               <tr key={store.id}>
                 <td className="px-4 py-3 font-medium text-white">{store.name}</td>
                 <td className="px-4 py-3 text-white/60">{store.category.name}</td>
+                <td className="px-4 py-3">
+                  <StoreLogoEditor storeId={store.id} logoUrl={store.logoUrl} />
+                </td>
                 <td className="px-4 py-3">
                   <span
                     className={
