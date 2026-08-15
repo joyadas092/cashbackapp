@@ -4,7 +4,13 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { Input } from "@/components/ui/Input";
 
-export function SearchBar({ placeholder = "Search stores, brands & offers" }: { placeholder?: string }) {
+export function SearchBar({
+  placeholder = "Search stores, brands & offers",
+  variant = "dark",
+}: {
+  placeholder?: string;
+  variant?: "dark" | "light";
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [value, setValue] = useState(searchParams.get("q") ?? "");
@@ -24,6 +30,7 @@ export function SearchBar({ placeholder = "Search stores, brands & offers" }: { 
         onChange={(e) => setValue(e.target.value)}
         placeholder={placeholder}
         aria-label="Search stores"
+        variant={variant}
       />
     </form>
   );

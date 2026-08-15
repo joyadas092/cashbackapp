@@ -28,7 +28,7 @@ export function FilterBar({ options }: { options: FilterOption[] }) {
         href={hrefFor()}
         className={cn(
           "rounded-full px-4 py-1.5 text-sm font-medium transition-colors",
-          !active ? "bg-violet-600 text-white" : "bg-white/10 text-white/70 hover:bg-white/20"
+          !active ? "bg-violet-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
         )}
       >
         All

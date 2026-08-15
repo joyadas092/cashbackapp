@@ -28,14 +28,15 @@ export function LoginPromptModal({
           onClick={() => setOpen(false)}
         >
           <Card
+            variant="light"
             className="w-full max-w-sm p-6 text-center"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="text-2xl">🔐</div>
-            <h3 className="mt-3 text-lg font-bold text-white">
+            <h3 className="mt-3 text-lg font-bold text-slate-900">
               Login to protect your cashback
             </h3>
-            <p className="mt-2 text-sm text-white/60">
+            <p className="mt-2 text-sm text-slate-500">
               You&apos;re currently not logged in. If you continue without logging in, we
               can&apos;t associate this {storeName} shopping trip with your account and you
               may miss cashback.
@@ -47,7 +48,7 @@ export function LoginPromptModal({
                 </Button>
               </a>
               <a href={`/go/${storeSlug}?intent=visit`}>
-                <Button variant="outline" className="w-full">
+                <Button variant="outlineLight" className="w-full">
                   Continue Without Cashback
                 </Button>
               </a>

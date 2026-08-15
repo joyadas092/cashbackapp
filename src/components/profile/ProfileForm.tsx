@@ -48,38 +48,51 @@ export function ProfileForm({ initial }: { initial: ProfileFormInitial }) {
   }
 
   return (
-    <Card className="p-6">
-      <h2 className="text-lg font-bold">Payout Details</h2>
-      <p className="mt-1 text-sm text-white/60">
+    <Card variant="light" className="p-6">
+      <h2 className="text-lg font-bold text-slate-900">Payout Details</h2>
+      <p className="mt-0.5 text-sm text-slate-500">
         KYC status: {initial.kycStatus ?? "Not submitted"}
       </p>
 
       <form onSubmit={handleSave} className="mt-4 flex flex-col gap-3">
-        <label className="flex flex-col gap-1 text-xs text-white/60">
+        <label className="flex flex-col gap-1.5 text-xs font-medium text-slate-600">
           UPI ID
-          <Input value={upiId} onChange={(e) => setUpiId(e.target.value)} placeholder="you@upi" />
+          <Input
+            value={upiId}
+            onChange={(e) => setUpiId(e.target.value)}
+            placeholder="you@upi"
+            variant="light"
+          />
         </label>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <label className="flex flex-col gap-1 text-xs text-white/60">
+          <label className="flex flex-col gap-1.5 text-xs font-medium text-slate-600">
             Account holder
-            <Input value={accountHolder} onChange={(e) => setAccountHolder(e.target.value)} />
+            <Input
+              value={accountHolder}
+              onChange={(e) => setAccountHolder(e.target.value)}
+              variant="light"
+            />
           </label>
-          <label className="flex flex-col gap-1 text-xs text-white/60">
+          <label className="flex flex-col gap-1.5 text-xs font-medium text-slate-600">
             Account number
-            <Input value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} />
+            <Input
+              value={accountNumber}
+              onChange={(e) => setAccountNumber(e.target.value)}
+              variant="light"
+            />
           </label>
-          <label className="flex flex-col gap-1 text-xs text-white/60">
+          <label className="flex flex-col gap-1.5 text-xs font-medium text-slate-600">
             IFSC
-            <Input value={ifsc} onChange={(e) => setIfsc(e.target.value)} />
+            <Input value={ifsc} onChange={(e) => setIfsc(e.target.value)} variant="light" />
           </label>
         </div>
 
         <div className="mt-2 flex items-center gap-3">
           <Button type="submit" variant="primary" disabled={saving}>
-            {saving ? "Saving..." : "Save"}
+            {saving ? "Saving..." : "Save Changes"}
           </Button>
-          {saved && <span className="text-sm text-cashlime-400">Saved.</span>}
-          {error && <span className="text-sm text-red-400">{error}</span>}
+          {saved && <span className="text-sm font-medium text-cashlime-700">Saved.</span>}
+          {error && <span className="text-sm text-red-600">{error}</span>}
         </div>
       </form>
     </Card>

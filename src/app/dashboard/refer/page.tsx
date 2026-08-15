@@ -36,31 +36,33 @@ export default async function ReferPage() {
     .reduce((sum, r) => sum + Number(r.totalEarned), 0);
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-10">
-      <h1 className="text-2xl font-bold">Refer & Earn</h1>
-      <p className="mt-1 text-white/60">Invite people and earn from their eligible activity.</p>
+    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-8">
+      <h1 className="text-2xl font-extrabold text-slate-900">Refer &amp; Earn</h1>
+      <p className="mt-1 text-slate-500">
+        Invite your friends and earn rewards when they shop and earn cashback.
+      </p>
+
+      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <Card variant="light" className="p-5">
+          <div className="text-xs font-medium text-slate-500">Total Referrals</div>
+          <div className="mt-1 text-2xl font-bold text-slate-900">{referrals.length}</div>
+        </Card>
+        <Card variant="light" className="p-5">
+          <div className="text-xs font-medium text-slate-500">Active Referral Earnings</div>
+          <div className="mt-1 text-2xl font-bold text-violet-700">{formatInr(pendingEarned)}</div>
+        </Card>
+        <Card variant="light" className="p-5">
+          <div className="text-xs font-medium text-slate-500">Lifetime Earnings</div>
+          <div className="mt-1 text-2xl font-bold text-cashlime-700">{formatInr(totalEarned)}</div>
+        </Card>
+      </div>
 
       <div className="mt-6">
         <ReferralCodeCard referralCode={user.referralCode} shareUrl={shareUrl} />
       </div>
 
-      <div className="mt-6 grid grid-cols-3 gap-4">
-        <Card className="p-4 text-center">
-          <div className="text-xl font-bold text-white">{referrals.length}</div>
-          <div className="text-xs text-white/50">Friends Joined</div>
-        </Card>
-        <Card className="p-4 text-center">
-          <div className="text-xl font-bold text-cyan-300">{formatInr(pendingEarned)}</div>
-          <div className="text-xs text-white/50">Active Referrals</div>
-        </Card>
-        <Card className="p-4 text-center">
-          <div className="text-xl font-bold text-cashlime-400">{formatInr(totalEarned)}</div>
-          <div className="text-xs text-white/50">Lifetime Earnings</div>
-        </Card>
-      </div>
-
       <div className="mt-8">
-        <h2 className="mb-3 text-lg font-bold">Your Referrals</h2>
+        <h2 className="mb-3 text-lg font-bold text-slate-900">Your Referred Users</h2>
         <ReferralList
           referrals={referrals.map((r) => ({
             name: r.referredUser.name,

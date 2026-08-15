@@ -3,9 +3,9 @@
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
-import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { AuthSplitLayout } from "@/components/auth/AuthSplitLayout";
 
 function RegisterForm() {
   const router = useRouter();
@@ -49,62 +49,72 @@ function RegisterForm() {
   }
 
   return (
-    <div className="mx-auto flex max-w-md flex-col items-center px-4 py-20">
-      <Card className="w-full p-8">
-        <h1 className="text-2xl font-bold">Create your account</h1>
-        <p className="mt-1 text-sm text-white/60">
-          Start earning cashback on every purchase, today.
+    <>
+      <h1 className="text-3xl font-extrabold text-slate-900">Create Your Account</h1>
+      <p className="mt-1 text-sm text-slate-500">Sign up and start earning more</p>
+
+      {referralCode && (
+        <p className="mt-4 rounded-lg bg-violet-50 px-3 py-2 text-sm text-violet-700">
+          Referred by <span className="font-semibold">{referralCode}</span>
         </p>
+      )}
 
-        {referralCode && (
-          <p className="mt-3 rounded-lg bg-violet-600/15 px-3 py-2 text-sm text-violet-300">
-            Referred by <span className="font-semibold">{referralCode}</span>
-          </p>
-        )}
-
-        <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-3">
+      <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-4">
+        <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-700">
+          Full Name
           <Input
-            placeholder="Full name"
+            placeholder="Enter your full name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
+            variant="light"
           />
+        </label>
+        <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-700">
+          Email Address
           <Input
             type="email"
-            placeholder="Email"
+            placeholder="Enter your email address"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
+            variant="light"
           />
+        </label>
+        <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-700">
+          Password
           <Input
             type="password"
-            placeholder="Password (min. 8 characters)"
+            placeholder="Create a password (min. 8 characters)"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
             minLength={8}
+            variant="light"
           />
-          {error && <p className="text-sm text-red-400">{error}</p>}
-          <Button type="submit" variant="primary" disabled={loading}>
-            {loading ? "Creating account..." : "Create Account"}
-          </Button>
-        </form>
+        </label>
+        {error && <p className="text-sm text-red-600">{error}</p>}
+        <Button type="submit" variant="primary" size="lg" disabled={loading}>
+          {loading ? "Creating account..." : "Sign Up"}
+        </Button>
+      </form>
 
-        <p className="mt-4 text-center text-sm text-white/50">
-          Already have an account?{" "}
-          <a href="/login" className="text-violet-400 hover:underline">
-            Login
-          </a>
-        </p>
-      </Card>
-    </div>
+      <p className="mt-6 text-center text-sm text-slate-500">
+        Already have an account?{" "}
+        <a href="/login" className="font-semibold text-violet-700 hover:underline">
+          Login
+        </a>
+      </p>
+    </>
   );
 }
 
 export default function RegisterPage() {
   return (
-    <Suspense>
-      <RegisterForm />
-    </Suspense>
+    <AuthSplitLayout>
+      <Suspense>
+        <RegisterForm />
+      </Suspense>
+    </AuthSplitLayout>
   );
 }

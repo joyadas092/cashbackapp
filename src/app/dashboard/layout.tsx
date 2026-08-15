@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
+import { DashboardShell } from "@/components/layout/dashboard/DashboardShell";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
@@ -7,5 +8,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
     redirect("/login?callbackUrl=/dashboard");
   }
 
-  return <>{children}</>;
+  return (
+    <DashboardShell
+      user={{ name: session.user.name ?? "there", email: session.user.email ?? "" }}
+    >
+      {children}
+    </DashboardShell>
+  );
 }

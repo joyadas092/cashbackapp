@@ -12,7 +12,7 @@ export function EmptyState({
 }) {
   return (
     <div className="flex flex-col items-center gap-4 py-16 text-center">
-      <p className="text-white/60">{message}</p>
+      <p className="text-slate-500">{message}</p>
       {ctaLabel && ctaHref && (
         <Link href={ctaHref}>
           <Button variant="primary">{ctaLabel}</Button>

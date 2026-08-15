@@ -1,16 +1,20 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
+type Variant = "dark" | "light";
+
 export function Pagination({
   page,
   totalPages,
   basePath,
   searchParams,
+  variant = "dark",
 }: {
   page: number;
   totalPages: number;
   basePath: string;
   searchParams?: Record<string, string | undefined>;
+  variant?: Variant;
 }) {
   if (totalPages <= 1) return null;
 
@@ -31,7 +35,11 @@ export function Pagination({
           href={hrefFor(p)}
           className={cn(
             "flex h-9 w-9 items-center justify-center rounded-full text-sm font-medium transition-colors",
-            p === page ? "bg-violet-600 text-white" : "bg-white/10 text-white/70 hover:bg-white/20"
+            p === page
+              ? "bg-violet-600 text-white"
+              : variant === "light"
+                ? "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                : "bg-white/10 text-white/70 hover:bg-white/20"
           )}
         >
           {p}

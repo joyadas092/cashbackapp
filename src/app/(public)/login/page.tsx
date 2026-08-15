@@ -3,9 +3,9 @@
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
-import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { AuthSplitLayout } from "@/components/auth/AuthSplitLayout";
 
 function LoginForm() {
   const router = useRouter();
@@ -40,47 +40,55 @@ function LoginForm() {
   }
 
   return (
-    <div className="mx-auto flex max-w-md flex-col items-center px-4 py-20">
-      <Card className="w-full p-8">
-        <h1 className="text-2xl font-bold">Welcome back</h1>
-        <p className="mt-1 text-sm text-white/60">Login to earn cashback on this purchase.</p>
+    <>
+      <h1 className="text-3xl font-extrabold text-slate-900">Welcome Back! 👋</h1>
+      <p className="mt-1 text-sm text-slate-500">Login to your CashbackApp account</p>
 
-        <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-3">
+      <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-4">
+        <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-700">
+          Email
           <Input
             type="email"
-            placeholder="Email"
+            placeholder="Enter your email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
+            variant="light"
           />
+        </label>
+        <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-700">
+          Password
           <Input
             type="password"
-            placeholder="Password"
+            placeholder="Enter your password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
+            variant="light"
           />
-          {error && <p className="text-sm text-red-400">{error}</p>}
-          <Button type="submit" variant="primary" disabled={loading}>
-            {loading ? "Logging in..." : "Login & Earn"}
-          </Button>
-        </form>
+        </label>
+        {error && <p className="text-sm text-red-600">{error}</p>}
+        <Button type="submit" variant="primary" size="lg" disabled={loading}>
+          {loading ? "Logging in..." : "Login"}
+        </Button>
+      </form>
 
-        <p className="mt-4 text-center text-sm text-white/50">
-          No account?{" "}
-          <a href="/register" className="text-violet-400 hover:underline">
-            Register
-          </a>
-        </p>
-      </Card>
-    </div>
+      <p className="mt-6 text-center text-sm text-slate-500">
+        Don&apos;t have an account?{" "}
+        <a href="/register" className="font-semibold text-violet-700 hover:underline">
+          Sign up
+        </a>
+      </p>
+    </>
   );
 }
 
 export default function LoginPage() {
   return (
-    <Suspense>
-      <LoginForm />
-    </Suspense>
+    <AuthSplitLayout>
+      <Suspense>
+        <LoginForm />
+      </Suspense>
+    </AuthSplitLayout>
   );
 }

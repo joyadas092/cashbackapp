@@ -13,16 +13,18 @@ export function DealCard({ store }: { store: DealCardData }) {
   return (
     <Link
       href={`/stores/${store.slug}`}
-      className="group flex min-w-[260px] shrink-0 items-center gap-4 rounded-xl2 border border-white/10 bg-gradient-to-br from-navy-800/80 to-navy-900/80 p-5 transition-all hover:-translate-y-1 hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 sm:min-w-0"
+      className="group flex min-w-[260px] shrink-0 items-center gap-4 rounded-xl2 border border-slate-200 bg-white p-5 shadow-card transition-all hover:-translate-y-1 hover:border-violet-300 hover:shadow-lg hover:shadow-violet-600/10 sm:min-w-0"
     >
-      <StoreLogo src={store.logoUrl} alt={store.name} size={52} />
+      <div className="rounded-2xl ring-1 ring-slate-200">
+        <StoreLogo src={store.logoUrl} alt={store.name} size={52} />
+      </div>
       <div className="min-w-0 flex-1">
-        <div className="truncate font-semibold text-white">{store.name}</div>
-        <p className="mt-0.5 text-sm text-cashlime-400">
-          Flat {store.cashbackDisplayText.replace(/^Up to /i, "")} + Extra Offers
+        <div className="truncate font-semibold text-slate-900">{store.name}</div>
+        <p className="mt-0.5 text-sm font-medium text-cashlime-700">
+          {store.cashbackDisplayText}
         </p>
       </div>
-      <Button variant="outline" size="sm" className="shrink-0" tabIndex={-1}>
+      <Button variant="outlineLight" size="sm" className="shrink-0" tabIndex={-1}>
         Grab Deal
       </Button>
     </Link>

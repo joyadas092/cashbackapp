@@ -20,10 +20,12 @@ export default async function ShareEarnPage() {
   });
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-10">
-      <h1 className="text-2xl font-bold">Share & Earn</h1>
-      <p className="mt-1 text-white/60">
-        Don&apos;t just shop. Share and earn when others shop through your link.
+    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-8">
+      <h1 className="text-2xl font-extrabold text-slate-900">
+        Share &amp; <span className="text-violet-700">Earn</span>
+      </h1>
+      <p className="mt-1 text-slate-500">
+        Share any product link and earn cashback on every purchase.
       </p>
 
       <div className="mt-6">
@@ -31,7 +33,7 @@ export default async function ShareEarnPage() {
       </div>
 
       <div className="mt-8">
-        <h2 className="mb-3 text-lg font-bold">Your Links</h2>
+        <h2 className="mb-3 text-lg font-bold text-slate-900">Your Links</h2>
         <ProfitLinkList
           items={links.map((link) => ({
             id: link.id,

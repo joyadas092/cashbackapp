@@ -97,19 +97,24 @@ export function ActivityFeed() {
             onClick={() => setTab(t.key)}
             className={cn(
               "rounded-full px-4 py-1.5 text-sm font-medium transition-colors",
-              tab === t.key ? "bg-violet-600 text-white" : "bg-white/10 text-white/70 hover:bg-white/20"
+              tab === t.key
+                ? "bg-violet-600 text-white"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
             )}
           >
             {t.label}
           </button>
         ))}
-        <span className="cursor-not-allowed rounded-full bg-white/5 px-4 py-1.5 text-sm font-medium text-white/30" title="Coming in a later phase">
+        <span
+          className="cursor-not-allowed rounded-full bg-slate-50 px-4 py-1.5 text-sm font-medium text-slate-300"
+          title="Coming in a later phase"
+        >
           Withdrawals
         </span>
       </div>
 
       <div className="mt-4 flex flex-col gap-3">
-        {loading && <p className="text-sm text-white/50">Loading...</p>}
+        {loading && <p className="text-sm text-slate-400">Loading...</p>}
 
         {!loading && !hasAnyData && (
           <EmptyState message="No activity yet." ctaLabel="Explore Stores" ctaHref="/stores" />
@@ -117,12 +122,20 @@ export function ActivityFeed() {
 
         {!loading &&
           clicks?.map((c) => (
-            <Card key={`click-${c.id}`} className="flex items-center justify-between p-4 text-sm">
-              <span className="font-medium text-white">{c.store.name}</span>
-              <span className="text-white/50">
-                {c.clickType === "DIRECT_CASHBACK" ? "Direct Cashback" : c.clickType === "PROFIT_LINK" ? "Profit Link" : "Visit Store"}
+            <Card
+              key={`click-${c.id}`}
+              variant="light"
+              className="flex items-center justify-between p-4 text-sm"
+            >
+              <span className="font-medium text-slate-900">{c.store.name}</span>
+              <span className="text-slate-500">
+                {c.clickType === "DIRECT_CASHBACK"
+                  ? "Direct Cashback"
+                  : c.clickType === "PROFIT_LINK"
+                    ? "Profit Link"
+                    : "Visit Store"}
               </span>
-              <span className="text-white/40">
+              <span className="hidden text-slate-400 sm:inline">
                 {new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeStyle: "short" }).format(new Date(c.createdAt))}
               </span>
             </Card>
@@ -130,11 +143,17 @@ export function ActivityFeed() {
 
         {!loading &&
           ledger?.map((w) => (
-            <Card key={`wtx-${w.id}`} className="flex items-center justify-between p-4 text-sm">
-              <span className="font-medium text-white">{w.type.replace(/_/g, " ")}</span>
-              <span className="font-semibold text-cashlime-400">{formatInr(w.amount)}</span>
-              <span className="text-white/50">{w.status}</span>
-              <span className="text-white/40">
+            <Card
+              key={`wtx-${w.id}`}
+              variant="light"
+              className="flex items-center justify-between p-4 text-sm"
+            >
+              <span className="font-medium text-slate-900">{w.type.replace(/_/g, " ")}</span>
+              <span className="font-semibold text-cashlime-700">{formatInr(w.amount)}</span>
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+                {w.status}
+              </span>
+              <span className="hidden text-slate-400 sm:inline">
                 {new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeStyle: "short" }).format(new Date(w.createdAt))}
               </span>
             </Card>

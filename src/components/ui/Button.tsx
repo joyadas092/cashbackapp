@@ -1,7 +1,7 @@
 import { ButtonHTMLAttributes, forwardRef } from "react";
 import { cn } from "@/lib/utils";
 
-type Variant = "primary" | "secondary" | "ghost" | "outline";
+type Variant = "primary" | "secondary" | "ghost" | "outline" | "outlineLight" | "ghostLight";
 type Size = "sm" | "md" | "lg";
 
 const variantClasses: Record<Variant, string> = {
@@ -11,6 +11,8 @@ const variantClasses: Record<Variant, string> = {
     "bg-cashlime-500 text-navy-950 hover:bg-cashlime-400 shadow-lg shadow-cashlime-500/25",
   ghost: "bg-transparent text-white hover:bg-white/10",
   outline: "bg-transparent border border-white/20 text-white hover:bg-white/10",
+  outlineLight: "bg-transparent border border-slate-300 text-slate-700 hover:bg-slate-50",
+  ghostLight: "bg-transparent text-slate-700 hover:bg-slate-100",
 };
 
 const sizeClasses: Record<Size, string> = {

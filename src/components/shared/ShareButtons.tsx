@@ -20,12 +20,12 @@ export function ShareButtons({ url, message }: { url: string; message: string })
         {copied ? "Copied!" : "Copy Link"}
       </Button>
       <a href={`https://wa.me/?text=${text}%20${encodedUrl}`} target="_blank" rel="noopener noreferrer">
-        <Button variant="outline" size="sm">
+        <Button variant="outlineLight" size="sm">
           WhatsApp
         </Button>
       </a>
       <a href={`https://t.me/share/url?url=${encodedUrl}&text=${text}`} target="_blank" rel="noopener noreferrer">
-        <Button variant="outline" size="sm">
+        <Button variant="outlineLight" size="sm">
           Telegram
         </Button>
       </a>
@@ -34,12 +34,12 @@ export function ShareButtons({ url, message }: { url: string; message: string })
         target="_blank"
         rel="noopener noreferrer"
       >
-        <Button variant="outline" size="sm">
+        <Button variant="outlineLight" size="sm">
           Facebook
         </Button>
       </a>
       <a href={`https://twitter.com/intent/tweet?text=${text}&url=${encodedUrl}`} target="_blank" rel="noopener noreferrer">
-        <Button variant="outline" size="sm">
+        <Button variant="outlineLight" size="sm">
           X
         </Button>
       </a>
