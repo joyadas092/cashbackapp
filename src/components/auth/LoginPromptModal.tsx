@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Lock } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 
@@ -32,7 +33,9 @@ export function LoginPromptModal({
             className="w-full max-w-sm p-6 text-center"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="text-2xl">🔐</div>
+            <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-violet-50 text-violet-600">
+              <Lock size={22} strokeWidth={1.75} />
+            </span>
             <h3 className="mt-3 text-lg font-bold text-slate-900">
               Login to protect your cashback
             </h3>

@@ -24,7 +24,7 @@ export function StoreCard({ store }: { store: StoreCardData }) {
           </span>
         )}
         <div className="rounded-2xl ring-1 ring-slate-200 transition-shadow group-hover:ring-violet-300">
-          <StoreLogo src={store.logoUrl} alt={store.name} />
+          <StoreLogo src={store.logoUrl} alt={store.name} fallbackSlug={store.slug} />
         </div>
         <div className="font-semibold text-slate-900">{store.name}</div>
         <CashbackBadge text={store.cashbackDisplayText} variant="light" />

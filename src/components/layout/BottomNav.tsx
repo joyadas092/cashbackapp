@@ -1,11 +1,12 @@
 import Link from "next/link";
+import { Activity, Home, Store, User, Wallet, type LucideIcon } from "lucide-react";
 
-const ITEMS = [
-  { href: "/", label: "Home", icon: "🏠" },
-  { href: "/stores", label: "Stores", icon: "🛍️" },
-  { href: "/stores?featured=1", label: "Earn", icon: "💰" },
-  { href: "/dashboard/activity", label: "Activity", icon: "📊" },
-  { href: "/dashboard/profile", label: "Profile", icon: "👤" },
+const ITEMS: Array<{ href: string; label: string; icon: LucideIcon }> = [
+  { href: "/", label: "Home", icon: Home },
+  { href: "/stores", label: "Stores", icon: Store },
+  { href: "/dashboard", label: "Wallet", icon: Wallet },
+  { href: "/dashboard/activity", label: "Activity", icon: Activity },
+  { href: "/dashboard/profile", label: "Profile", icon: User },
 ];
 
 export function BottomNav() {
@@ -15,9 +16,9 @@ export function BottomNav() {
         <Link
           key={item.label}
           href={item.href}
-          className="flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-medium text-white/60"
+          className="flex flex-1 flex-col items-center gap-1 py-2.5 text-[11px] font-medium text-white/60"
         >
-          <span className="text-lg leading-none">{item.icon}</span>
+          <item.icon size={20} strokeWidth={1.75} />
           {item.label}
         </Link>
       ))}

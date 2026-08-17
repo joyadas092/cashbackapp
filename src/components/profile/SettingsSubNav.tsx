@@ -1,10 +1,33 @@
+import { Bell, Landmark, ShieldCheck, User, type LucideIcon } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 
-const CATEGORIES = [
-  { key: "profile", icon: "👤", label: "Profile Settings", sub: "Update your personal information", active: true },
-  { key: "security", icon: "🛡️", label: "Account & Security", sub: "Change password and secure your account" },
-  { key: "bank", icon: "🏦", label: "Bank Details", sub: "Manage your payout accounts" },
-  { key: "notifications", icon: "🔔", label: "Notification Preferences", sub: "Choose what you're notified about" },
+const CATEGORIES: Array<{
+  key: string;
+  icon: LucideIcon;
+  label: string;
+  sub: string;
+  active?: boolean;
+}> = [
+  {
+    key: "profile",
+    icon: User,
+    label: "Profile Settings",
+    sub: "Update your personal information",
+    active: true,
+  },
+  {
+    key: "security",
+    icon: ShieldCheck,
+    label: "Account & Security",
+    sub: "Change password and secure your account",
+  },
+  { key: "bank", icon: Landmark, label: "Bank Details", sub: "Manage your payout accounts" },
+  {
+    key: "notifications",
+    icon: Bell,
+    label: "Notification Preferences",
+    sub: "Choose what you're notified about",
+  },
 ];
 
 export function SettingsSubNav() {
@@ -22,7 +45,15 @@ export function SettingsSubNav() {
               }
               title={c.active ? undefined : "Coming in a later phase"}
             >
-              <span className="text-base leading-none">{c.icon}</span>
+              <span
+                className={
+                  c.active
+                    ? "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-600 text-white"
+                    : "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500"
+                }
+              >
+                <c.icon size={17} strokeWidth={1.75} />
+              </span>
               <div className="min-w-0">
                 <div
                   className={
@@ -36,7 +67,7 @@ export function SettingsSubNav() {
                 <div className="text-xs text-slate-400">{c.sub}</div>
               </div>
               {!c.active && (
-                <span className="ml-auto rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-400">
+                <span className="ml-auto shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-400">
                   Soon
                 </span>
               )}

@@ -94,7 +94,12 @@ export default async function DashboardPage() {
             {recentClicks.map((click) => (
               <li key={click.id} className="flex items-center gap-3 py-3 text-sm">
                 <div className="rounded-xl ring-1 ring-slate-200">
-                  <StoreLogo src={click.store.logoUrl} alt={click.store.name} size={36} />
+                  <StoreLogo
+                    src={click.store.logoUrl}
+                    alt={click.store.name}
+                    size={36}
+                    fallbackSlug={click.store.slug}
+                  />
                 </div>
                 <span className="flex-1 font-medium text-slate-900">{click.store.name}</span>
                 <span className="text-slate-500">

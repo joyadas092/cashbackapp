@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { CheckCircle2, ShieldCheck } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { StoreLogo } from "@/components/store/StoreLogo";
@@ -62,7 +63,12 @@ export default async function StoreDetailPage({ params }: { params: { slug: stri
             <div className="rounded-xl2 border border-slate-200 bg-white p-6 shadow-card sm:p-8">
               <div className="flex flex-col items-center gap-5 text-center sm:flex-row sm:text-left">
                 <div className="rounded-2xl ring-1 ring-slate-200">
-                  <StoreLogo src={store.logoUrl} alt={store.name} size={80} />
+                  <StoreLogo
+                    src={store.logoUrl}
+                    alt={store.name}
+                    size={80}
+                    fallbackSlug={store.slug}
+                  />
                 </div>
                 <div className="flex-1">
                   {store.featured && (
@@ -109,7 +115,7 @@ export default async function StoreDetailPage({ params }: { params: { slug: stri
               </div>
 
               <div className="mt-5 flex items-start gap-3 rounded-xl border border-violet-100 bg-violet-50 p-4">
-                <span className="text-lg">🛡️</span>
+                <ShieldCheck size={20} strokeWidth={1.75} className="mt-0.5 shrink-0 text-violet-600" />
                 <div>
                   <div className="text-sm font-semibold text-violet-900">Shop with confidence</div>
                   <p className="text-sm text-violet-700/80">
@@ -171,19 +177,21 @@ export default async function StoreDetailPage({ params }: { params: { slug: stri
 
             <div className="mt-6 rounded-xl2 border border-cashlime-500/30 bg-cashlime-50 p-6">
               <h2 className="text-base font-bold text-slate-900">Important Tips</h2>
-              <ul className="mt-3 space-y-2 text-sm text-slate-700">
-                <li className="flex gap-2">
-                  <span className="text-cashlime-700">✓</span>
-                  Click Earn Cashback and complete your purchase in the same session.
-                </li>
-                <li className="flex gap-2">
-                  <span className="text-cashlime-700">✓</span>
-                  Clear your cart before starting a tracked trip.
-                </li>
-                <li className="flex gap-2">
-                  <span className="text-cashlime-700">✓</span>
-                  Returns and cancellations are not eligible for cashback.
-                </li>
+              <ul className="mt-3 space-y-2.5 text-sm text-slate-700">
+                {[
+                  "Click Earn Cashback and complete your purchase in the same session.",
+                  "Clear your cart before starting a tracked trip.",
+                  "Returns and cancellations are not eligible for cashback.",
+                ].map((tip) => (
+                  <li key={tip} className="flex gap-2">
+                    <CheckCircle2
+                      size={16}
+                      strokeWidth={2}
+                      className="mt-0.5 shrink-0 text-cashlime-700"
+                    />
+                    {tip}
+                  </li>
+                ))}
               </ul>
             </div>
           </aside>

@@ -41,7 +41,7 @@ export function FilterBar({ options }: { options: FilterOption[] }) {
             "rounded-full px-4 py-1.5 text-sm font-medium transition-colors",
             active === opt.slug
               ? "bg-violet-600 text-white"
-              : "bg-white/10 text-white/70 hover:bg-white/20"
+              : "bg-slate-100 text-slate-600 hover:bg-slate-200"
           )}
         >
           {opt.name}

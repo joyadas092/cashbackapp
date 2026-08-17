@@ -1,16 +1,17 @@
 import Link from "next/link";
+import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function SidebarNavItem({
   href,
-  icon,
+  icon: Icon,
   label,
   active,
   disabled,
   onClick,
 }: {
   href: string;
-  icon: string;
+  icon: LucideIcon;
   label: string;
   active?: boolean;
   disabled?: boolean;
@@ -22,7 +23,7 @@ export function SidebarNavItem({
         className="flex cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-white/25"
         title="Coming in a later phase"
       >
-        <span className="text-base leading-none">{icon}</span>
+        <Icon size={18} strokeWidth={1.75} />
         {label}
         <span className="ml-auto rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-white/30">
           Soon
@@ -42,7 +43,7 @@ export function SidebarNavItem({
           : "border-transparent text-white/60 hover:bg-white/5 hover:text-white"
       )}
     >
-      <span className="text-base leading-none">{icon}</span>
+      <Icon size={18} strokeWidth={1.75} />
       {label}
     </Link>
   );

@@ -1,3 +1,4 @@
+import { LayoutGrid, Percent, Store } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { StoreCard } from "@/components/store/StoreCard";
 import { SearchBar } from "@/components/shared/SearchBar";
@@ -53,19 +54,45 @@ export default async function StoresPage({
           Shop from our partner stores and earn real cashback.
         </p>
 
-        <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3">
-          <div className="rounded-xl2 border border-slate-200 bg-white p-4 shadow-card">
-            <div className="text-2xl font-bold text-violet-700">{activeTotal}</div>
-            <div className="text-xs text-slate-500">Total Stores</div>
-          </div>
-          <div className="rounded-xl2 border border-slate-200 bg-white p-4 shadow-card">
-            <div className="text-2xl font-bold text-cyan-600">{categories.length}</div>
-            <div className="text-xs text-slate-500">Categories</div>
-          </div>
-          <div className="rounded-xl2 border border-slate-200 bg-white p-4 shadow-card">
-            <div className="text-2xl font-bold text-cashlime-700">{total}</div>
-            <div className="text-xs text-slate-500">Matching Your Filters</div>
-          </div>
+        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {[
+            {
+              icon: Store,
+              value: activeTotal,
+              label: "Total Stores",
+              chip: "bg-violet-50 text-violet-700",
+              accent: "text-violet-700",
+            },
+            {
+              icon: LayoutGrid,
+              value: categories.length,
+              label: "Categories",
+              chip: "bg-cyan-50 text-cyan-700",
+              accent: "text-cyan-700",
+            },
+            {
+              icon: Percent,
+              value: total,
+              label: "Matching Your Filters",
+              chip: "bg-cashlime-50 text-cashlime-700",
+              accent: "text-cashlime-700",
+            },
+          ].map((tile) => (
+            <div
+              key={tile.label}
+              className="flex items-center gap-3 rounded-xl2 border border-slate-200 bg-white p-5 shadow-card"
+            >
+              <span
+                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${tile.chip}`}
+              >
+                <tile.icon size={20} strokeWidth={1.75} />
+              </span>
+              <div>
+                <div className={`text-2xl font-bold ${tile.accent}`}>{tile.value}</div>
+                <div className="text-xs text-slate-500">{tile.label}</div>
+              </div>
+            </div>
+          ))}
         </div>
 
         <div className="mt-6 max-w-md">

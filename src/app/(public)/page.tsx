@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Link2, ShoppingBag, Users } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { Button } from "@/components/ui/Button";
 import { StoreCard } from "@/components/store/StoreCard";
@@ -99,27 +100,34 @@ export default async function HomePage() {
           <section className="grid grid-cols-1 gap-4 py-10 sm:grid-cols-3">
             {[
               {
-                icon: "🛍️",
+                icon: ShoppingBag,
                 title: "Shop & Earn",
                 body: "Get cashback from your own purchases.",
                 accent: "bg-violet-50 border-violet-100",
+                chip: "bg-violet-600 text-white",
               },
               {
-                icon: "🔗",
+                icon: Link2,
                 title: "Share & Earn",
                 body: "Create earning links and make money when others shop.",
                 accent: "bg-cashlime-50 border-cashlime-500/20",
+                chip: "bg-cashlime-500 text-navy-950",
               },
               {
-                icon: "👥",
+                icon: Users,
                 title: "Refer & Earn",
                 body: "Invite people and earn from their eligible activity.",
                 accent: "bg-cyan-50 border-cyan-200",
+                chip: "bg-cyan-500 text-white",
               },
             ].map((p) => (
               <div key={p.title} className={`rounded-xl2 border p-6 ${p.accent}`}>
-                <div className="text-3xl">{p.icon}</div>
-                <h3 className="mt-2 font-bold text-slate-900">{p.title}</h3>
+                <span
+                  className={`flex h-12 w-12 items-center justify-center rounded-xl ${p.chip}`}
+                >
+                  <p.icon size={22} strokeWidth={1.75} />
+                </span>
+                <h3 className="mt-3 font-bold text-slate-900">{p.title}</h3>
                 <p className="mt-1 text-sm text-slate-600">{p.body}</p>
               </div>
             ))}

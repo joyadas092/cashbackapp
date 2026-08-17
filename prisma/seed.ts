@@ -1,5 +1,6 @@
 import { PrismaClient, CashbackType } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { publicLogoUrl } from "../src/lib/logo";
 
 const prisma = new PrismaClient();
 
@@ -146,14 +147,14 @@ async function main() {
         cashbackDisplayText: s.cashbackDisplayText,
         featured: s.featured ?? false,
         cashbackType: CashbackType.PERCENTAGE,
-        logoUrl: `/logos/${s.slug}.svg`,
+        logoUrl: publicLogoUrl(s.domains[0]),
         merchantDomains: s.domains,
         profitLinkEligible: true,
       },
       create: {
         name: s.name,
         slug: s.slug,
-        logoUrl: `/logos/${s.slug}.svg`,
+        logoUrl: publicLogoUrl(s.domains[0]),
         categoryId,
         cashbackType: CashbackType.PERCENTAGE,
         cashbackRate: s.cashbackRate,
