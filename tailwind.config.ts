@@ -44,9 +44,14 @@ const config: Config = {
           "0%, 100%": { backgroundPosition: "0% 50%" },
           "50%": { backgroundPosition: "100% 50%" },
         },
+        float: {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-10px)" },
+        },
       },
       animation: {
         "gradient-x": "gradient-x 6s ease infinite",
+        float: "float 5s ease-in-out infinite",
       },
     },
   },
