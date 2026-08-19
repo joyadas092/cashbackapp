@@ -12,6 +12,29 @@ const CATEGORIES = [
   { name: "Beauty", slug: "beauty", icon: "sparkles" },
 ];
 
+/**
+ * Store-page content. Cuelinks gives one flat payout per campaign and no
+ * category breakdown, coupons or payout timelines, so this is seeded here and
+ * maintained afterwards in Admin -> Stores -> Page Content.
+ */
+interface StorePageContent {
+  tagline: string;
+  previousRate?: number;
+  visitTime: string;
+  trackingTime: string;
+  paymentTime: string;
+  description: string;
+  rates: Array<{ label: string; displayText: string }>;
+  offers: Array<{
+    badge?: string;
+    title: string;
+    description?: string;
+    code?: string;
+    validTill?: string; // yyyy-mm-dd
+  }>;
+  tips: string[];
+}
+
 const STORES: Array<{
   name: string;
   slug: string;
@@ -21,6 +44,7 @@ const STORES: Array<{
   rule: { customerPct: number; profitLinkPct: number; referralPct: number; platformPct: number };
   featured?: boolean;
   domains: string[];
+  page?: StorePageContent;
 }> = [
   {
     name: "Flipkart",
@@ -31,6 +55,54 @@ const STORES: Array<{
     rule: { customerPct: 70, profitLinkPct: 10, referralPct: 5, platformPct: 15 },
     featured: true,
     domains: ["flipkart.com", "www.flipkart.com", "dl.flipkart.com"],
+    page: {
+      tagline:
+        "India's leading online shopping destination for mobiles, electronics, fashion, home & more.",
+      previousRate: 6,
+      visitTime: "7 Days",
+      trackingTime: "24 - 48 Hours",
+      paymentTime: "60 - 90 Days",
+      description:
+        "Flipkart is one of India's largest e-commerce platforms offering a wide range of products across categories. Shop your favorite products and earn exciting cashback on every purchase through CashbackApp.",
+      rates: [
+        { label: "Mobiles & Tablets", displayText: "Up to 8%" },
+        { label: "Electronics", displayText: "Up to 6%" },
+        { label: "Fashion", displayText: "Up to 8%" },
+        { label: "Home & Furniture", displayText: "Up to 5%" },
+        { label: "Beauty & Personal Care", displayText: "Up to 6%" },
+        { label: "Appliances", displayText: "Up to 6%" },
+        { label: "Others", displayText: "Up to 4%" },
+      ],
+      offers: [
+        {
+          badge: "EXTRA",
+          title: "Extra 2% Cashback",
+          description: "On all prepaid orders",
+          code: "GET2",
+          validTill: "2026-12-31",
+        },
+        {
+          badge: "EXTRA",
+          title: "Extra ₹100 Rewards",
+          description: "On orders above ₹1500",
+          code: "SAVE100",
+          validTill: "2026-12-31",
+        },
+        {
+          badge: "EXTRA",
+          title: "5% Off on SuperCoins",
+          description: "Use SuperCoins & Save More",
+          code: "COINS5",
+          validTill: "2026-12-31",
+        },
+      ],
+      tips: [
+        "Click on Earn Cashback and complete your purchase in the same session.",
+        "Do not use any other coupon code except the ones listed here.",
+        "Returns & cancellations are not eligible for cashback.",
+        "Cashback is not applicable on Flipkart Gift Cards.",
+      ],
+    },
   },
   {
     name: "Amazon",
@@ -117,6 +189,49 @@ const STORES: Array<{
   },
 ];
 
+/**
+ * Every store page uses the same layout, so every store needs the same content
+ * blocks. Stores without hand-written copy get a set derived from their own
+ * headline rate — the top category matches the headline and the rest step down,
+ * which is how these tables actually read on cashback sites.
+ */
+function defaultPageContent(store: {
+  name: string;
+  cashbackRate: number;
+  categorySlug: string;
+}): StorePageContent {
+  const top = store.cashbackRate;
+  const step = (n: number) => `Up to ${Math.max(1, Math.round(top - n))}%`;
+
+  const byCategory: Record<string, string[]> = {
+    electronics: ["Mobiles & Tablets", "Electronics", "Appliances", "Accessories"],
+    fashion: ["Men's Fashion", "Women's Fashion", "Footwear", "Accessories"],
+    travel: ["Flights", "Hotels", "Bus & Trains", "Holiday Packages"],
+    food: ["Restaurant Orders", "Groceries", "Beverages", "Desserts"],
+    beauty: ["Skincare", "Makeup", "Fragrances", "Personal Care"],
+  };
+  const labels = byCategory[store.categorySlug] ?? ["Popular Categories", "New Arrivals", "Sale"];
+
+  return {
+    tagline: `Shop at ${store.name} through CashbackApp and earn cashback on every eligible order.`,
+    visitTime: "7 Days",
+    trackingTime: "24 - 48 Hours",
+    paymentTime: "60 - 90 Days",
+    description: `${store.name} is one of our partner stores. Shop your favourite products and earn cashback on every eligible purchase made through CashbackApp.`,
+    rates: [
+      ...labels.map((label, i) => ({ label, displayText: step(i) })),
+      { label: "Others", displayText: step(labels.length) },
+    ],
+    offers: [],
+    tips: [
+      "Click on Earn Cashback and complete your purchase in the same session.",
+      "Do not use any other coupon code except the ones listed here.",
+      "Returns & cancellations are not eligible for cashback.",
+      `Cashback is not applicable on ${store.name} Gift Cards.`,
+    ],
+  };
+}
+
 function referralCode(seed: string) {
   return seed.toUpperCase().slice(0, 8);
 }
@@ -165,6 +280,51 @@ async function main() {
         profitLinkEligible: true,
       },
     });
+
+    // --- Store page content --------------------------------------------------
+    const page = s.page ?? defaultPageContent(s);
+
+    await prisma.store.update({
+      where: { id: store.id },
+      data: {
+        tagline: page.tagline,
+        previousRate: page.previousRate ?? null,
+        visitTime: page.visitTime,
+        trackingTime: page.trackingTime,
+        paymentTime: page.paymentTime,
+        description: page.description,
+        importantTips: page.tips,
+      },
+    });
+
+    // Replace rather than upsert: these lists are ordered and small, and a
+    // re-run of the seed must not leave stale rows behind.
+    await prisma.storeCashbackRate.deleteMany({ where: { storeId: store.id } });
+    if (page.rates.length > 0) {
+      await prisma.storeCashbackRate.createMany({
+        data: page.rates.map((r, i) => ({
+          storeId: store.id,
+          label: r.label,
+          displayText: r.displayText,
+          sortOrder: i,
+        })),
+      });
+    }
+
+    await prisma.storeOffer.deleteMany({ where: { storeId: store.id } });
+    if (page.offers.length > 0) {
+      await prisma.storeOffer.createMany({
+        data: page.offers.map((o, i) => ({
+          storeId: store.id,
+          badge: o.badge ?? null,
+          title: o.title,
+          description: o.description ?? null,
+          code: o.code ?? null,
+          validTill: o.validTill ? new Date(`${o.validTill}T00:00:00.000Z`) : null,
+          sortOrder: i,
+        })),
+      });
+    }
 
     await prisma.campaign.upsert({
       where: { cuelinksCampaignId: `stub_${s.slug}` },

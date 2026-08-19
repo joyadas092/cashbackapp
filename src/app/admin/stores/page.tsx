@@ -58,6 +58,12 @@ export default async function AdminStoresPage() {
                     >
                       Rates
                     </Link>
+                    <Link
+                      href={`/admin/stores/${store.id}/page-content`}
+                      className="text-xs font-medium text-violet-400 hover:underline"
+                    >
+                      Page Content
+                    </Link>
                   </div>
                 </td>
               </tr>

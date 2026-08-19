@@ -128,6 +128,7 @@ model User {
   profitLinks        ProfitLink[]
   referralsMade      Referral[]          @relation("ReferrerOf")
   referredBy         Referral?           @relation("ReferredBy")
+  favorites          StoreFavorite[]
 
   @@map("users")
 }
@@ -224,19 +225,93 @@ model Store {
   merchantDomains     String[]     @default([]) @map("merchant_domains")
   seoTitle            String?      @map("seo_title")
   seoDescription      String?      @map("seo_description")
-  createdAt           DateTime     @default(now()) @map("created_at")
-  updatedAt           DateTime     @updatedAt @map("updated_at")
 
-  category      StoreCategory  @relation(fields: [categoryId], references: [id])
+  // --- Store-page presentation, all admin-editable per store -----------------
+  // Cuelinks exposes one flat payout per campaign (Flipkart: 6% "Per Sale(%)")
+  // and no per-category rates, no coupons, and no payment timelines. Everything
+  // below is therefore ours to maintain, not something a sync can fill in.
+  tagline        String? // one-liner under the store name
+  previousRate   Decimal? @map("previous_rate") @db.Decimal(5, 2) // powers the "Was 6%" chip
+  visitTime      String?  @map("visit_time") // e.g. "7 Days"
+  trackingTime   String?  @map("tracking_time") // e.g. "24 - 48 Hours"
+  paymentTime    String?  @map("payment_time") // e.g. "60 - 90 Days"
+  storePolicies  String?  @map("store_policies") // "Store Policies" tab body
+  importantTips  String[] @default([]) @map("important_tips")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  category      StoreCategory       @relation(fields: [categoryId], references: [id])
   campaigns     Campaign[]
   clicks        Click[]
   cashbackRules CashbackRule[]
   profitLinks   ProfitLink[]
   transactions  Transaction[]
+  categoryRates StoreCashbackRate[]
+  offers        StoreOffer[]
+  favorites     StoreFavorite[]
 
   @@index([categoryId])
   @@index([status, featured, ranking])
   @@map("stores")
+}
+
+/// A user's saved store. The unique pair is what makes the favorite toggle
+/// idempotent — double-clicking the button can never create two rows.
+model StoreFavorite {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  storeId   String   @map("store_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, storeId])
+  @@index([userId])
+  @@map("store_favorites")
+}
+
+/// One row of the store page's category rate table ("Mobiles & Tablets — Up to 8%").
+/// Cuelinks has no per-category rate data, so these are entered in the admin panel.
+/// `displayText` is stored verbatim rather than computed because merchants publish
+/// these as marketing copy ("Up to 8%", "Flat 5%", "Not eligible").
+model StoreCashbackRate {
+  id          String   @id @default(cuid())
+  storeId     String   @map("store_id")
+  label       String
+  displayText String   @map("display_text")
+  sortOrder   Int      @default(0) @map("sort_order")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId, sortOrder])
+  @@map("store_cashback_rates")
+}
+
+/// A coupon/offer card in the store page's "Best Offers for You" panel.
+/// The Cuelinks offers API returns nothing for several campaigns we carry
+/// (Flipkart included), so these are admin-managed too.
+model StoreOffer {
+  id          String    @id @default(cuid())
+  storeId     String    @map("store_id")
+  badge       String? // small tag, e.g. "EXTRA"
+  title       String
+  description String?
+  code        String? // coupon code shown in the pill; null renders no pill
+  validTill   DateTime? @map("valid_till")
+  sortOrder   Int       @default(0) @map("sort_order")
+  isActive    Boolean   @default(true) @map("is_active")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId, sortOrder])
+  @@map("store_offers")
 }
 
 model Campaign {
