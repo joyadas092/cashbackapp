@@ -8,7 +8,10 @@ const ITEMS: Array<{ href: string; label: string; disabled?: boolean }> = [
   { href: "/", label: "Home" },
   { href: "/stores", label: "Stores" },
   { href: "/share-earn", label: "Share & Earn" },
-  { href: "/dashboard/refer", label: "Refer & Earn" },
+  // Points at the public page, not /dashboard/refer — a logged-out visitor
+  // clicking this in the header should land on the pitch, not a login wall.
+  // The public page links signed-in users through to their dashboard view.
+  { href: "/refer-earn", label: "Refer & Earn" },
   { href: "#", label: "Deals", disabled: true },
   { href: "#", label: "Help", disabled: true },
 ];

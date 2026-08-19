@@ -230,6 +230,16 @@ docker compose exec postgres psql -U cashback -d postgres -c "CREATE DATABASE ca
 DATABASE_URL=$TEST_DATABASE_URL npx prisma migrate deploy
 ```
 
+**Re-run that `migrate deploy` line after every schema change.** `npm run db:migrate`
+only touches the dev database, so the test database silently falls behind and the whole
+integration suite fails with `The column <name> does not exist in the current database` —
+which looks like a code regression but isn't. On Windows PowerShell:
+
+```powershell
+$env:DATABASE_URL = "postgresql://cashback:cashback@localhost:5433/cashbackapp_test?schema=public"
+npx prisma migrate deploy
+```
+
 ## Project structure
 
 ```

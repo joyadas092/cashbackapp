@@ -425,8 +425,19 @@ model ReferralRule {
   maxTotalEarning Decimal? @map("max_total_earning") @db.Decimal(12, 2)
   minOrderValue   Decimal? @map("min_order_value") @db.Decimal(12, 2)
   isActive        Boolean  @default(true) @map("is_active")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // --- Public landing page (/refer-earn), all admin-editable ----------------
+  // headlineRatePct is the advertised "get X% of our income" figure. It is
+  // deliberately separate from CashbackRule.referralPct, which is the per-store
+  // split the payout engine actually applies: stores differ, so no single
+  // per-store number is honest to advertise site-wide. Changing this changes a
+  // public promise, so it is edited in one place rather than hardcoded in JSX.
+  headlineRatePct Decimal? @map("headline_rate_pct") @db.Decimal(5, 2)
+  publicHeadline  String?  @map("public_headline")
+  publicSubtext   String?  @map("public_subtext")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("referral_rules")
 }

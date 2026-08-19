@@ -568,8 +568,17 @@ async function main() {
         maxTotalEarning: 500,
         minOrderValue: null,
         fixedBonus: null,
+        // Advertised on /refer-earn. Editable in Admin -> Refer & Earn.
+        headlineRatePct: 5,
         isActive: true,
       },
+    });
+  } else if (existingReferralRule.headlineRatePct === null) {
+    // Existing installs predate the public page — give them a starting figure
+    // rather than rendering a rate-less landing page.
+    await prisma.referralRule.update({
+      where: { id: existingReferralRule.id },
+      data: { headlineRatePct: 5 },
     });
   }
 
