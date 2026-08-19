@@ -27,7 +27,7 @@ import { cn } from "@/lib/utils";
 
 const NAV_ITEMS: Array<{ href: string; icon: LucideIcon; label: string; disabled?: boolean }> = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-  { href: "/dashboard#wallet", icon: Wallet, label: "Wallet" },
+  { href: "/dashboard/wallet", icon: Wallet, label: "Wallet" },
   { href: "/share-earn", icon: Link2, label: "Profit Links" },
   { href: "/dashboard/refer", icon: Users, label: "Refer & Earn" },
   { href: "/dashboard/activity", icon: Activity, label: "My Activity" },
@@ -99,8 +99,6 @@ export function Sidebar({
                 href={item.href}
                 icon={item.icon}
                 label={item.label}
-                // pathname never contains a hash, so the "#wallet" anchor item
-                // never lights up on its own — Dashboard stays the active row.
                 active={!item.disabled && pathname === item.href}
                 disabled={item.disabled}
                 onClick={() => setOpen(false)}

@@ -56,7 +56,6 @@ enum ClickStatus {
   @@map("click_status")
 }
 
-// WITHDRAWAL is added in Phase 3 alongside the withdrawals feature.
 enum WalletTxType {
   CASHBACK_PENDING
   CASHBACK_CONFIRMED
@@ -66,8 +65,33 @@ enum WalletTxType {
   PROFIT_LINK_EARNING_REVERSED
   REFERRAL_EARNING
   REFERRAL_EARNING_REVERSED
+  // Debits. WITHDRAWAL is stored as a positive amount and interpreted by type,
+  // matching how every other row in this ledger is stored; the UI renders the
+  // sign. WITHDRAWAL_REVERSED credits the money back when a request is
+  // rejected or cancelled.
+  WITHDRAWAL
+  WITHDRAWAL_REVERSED
 
   @@map("wallet_tx_type")
+}
+
+enum WithdrawalStatus {
+  REQUESTED
+  PROCESSING
+  COMPLETED
+  REJECTED
+  CANCELLED
+
+  @@map("withdrawal_status")
+}
+
+enum WithdrawalMethod {
+  UPI
+  BANK_TRANSFER
+  PAYTM
+  AMAZON_PAY
+
+  @@map("withdrawal_method")
 }
 
 enum WalletTxStatus {
@@ -129,6 +153,7 @@ model User {
   referralsMade      Referral[]          @relation("ReferrerOf")
   referredBy         Referral?           @relation("ReferredBy")
   favorites          StoreFavorite[]
+  withdrawals        WithdrawalRequest[]
 
   @@map("users")
 }
@@ -416,6 +441,35 @@ model Referral {
 
   @@index([referrerId])
   @@map("referrals")
+}
+
+/// A user's request to take money out of their wallet.
+///
+/// Requesting debits `availableBalance` immediately and writes a PENDING
+/// WITHDRAWAL ledger row, so the same rupees cannot be requested twice while the
+/// first request is outstanding. `withdrawn` only moves on COMPLETED — until
+/// then the money is reserved, not gone. REJECTED and CANCELLED credit it back
+/// via WITHDRAWAL_REVERSED rather than editing the original row, keeping the
+/// ledger append-only.
+model WithdrawalRequest {
+  id     String           @id @default(cuid())
+  userId String           @map("user_id")
+  amount Decimal          @db.Decimal(12, 2)
+  method WithdrawalMethod
+  /// Where the money goes — a UPI id, or a masked account reference. Never a
+  /// full bank account number.
+  destination String
+  status      WithdrawalStatus @default(REQUESTED)
+  adminNote   String?          @map("admin_note")
+  requestedAt DateTime         @default(now()) @map("requested_at")
+  processedAt DateTime?        @map("processed_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, requestedAt])
+  @@index([status])
+  @@map("withdrawal_requests")
 }
 
 model ReferralRule {

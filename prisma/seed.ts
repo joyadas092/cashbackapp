@@ -386,6 +386,264 @@ async function seedReferralDemo(referrerId: string) {
   });
 }
 
+/**
+ * Demo data for the My Activity and Wallet pages, covering all three ways this
+ * app pays out: the user's own shopping, clicks on a profit link they shared,
+ * and a bonus adjustment. Referral activity is seeded separately.
+ *
+ * Written through the same tables the real flows use — Click, Transaction and
+ * WalletTransaction — so every figure on those pages is computed, not stubbed.
+ */
+async function seedActivityDemo(userId: string) {
+  console.log("Seeding demo activity...");
+
+  const wallet = await prisma.wallet.findUnique({ where: { userId } });
+  if (!wallet) return;
+
+  const stores = await prisma.store.findMany({
+    where: { slug: { in: ["amazon", "flipkart", "myntra", "ajio", "nykaa"] } },
+    select: { id: true, slug: true, name: true },
+  });
+  if (stores.length === 0) return;
+
+  const daysAgo = (n: number) => new Date(Date.now() - n * 24 * 60 * 60 * 1000);
+
+  // --- The user's own shopping ---------------------------------------------
+  const OWN_ORDERS = [
+    { storeSlug: "amazon", days: 1, sale: 2499, commission: 125, customer: 74.97 },
+    { storeSlug: "flipkart", days: 2, sale: 1299, commission: 78, customer: 51.96 },
+    { storeSlug: "myntra", days: 4, sale: 1899, commission: 152, customer: 94.95 },
+    { storeSlug: "ajio", days: 6, sale: 1499, commission: 120, customer: 74.95, pending: true },
+    { storeSlug: "nykaa", days: 9, sale: 899, commission: 72, customer: 44.95 },
+  ];
+
+  for (const [i, order] of OWN_ORDERS.entries()) {
+    const store = stores.find((s) => s.slug === order.storeSlug);
+    if (!store) continue;
+
+    const externalId = `seed_own_${userId}_${i}`;
+    const already = await prisma.transaction.findUnique({
+      where: {
+        storeId_cuelinksTransactionId: { storeId: store.id, cuelinksTransactionId: externalId },
+      },
+    });
+    if (already) continue;
+
+    const at = daysAgo(order.days);
+    const click = await prisma.click.create({
+      data: {
+        userId,
+        storeId: store.id,
+        clickType: "DIRECT_CASHBACK",
+        originalUrl: `https://www.${order.storeSlug}.com/demo-${i}`,
+        trackingUrl: `https://linksredirect.com/?demo_own=${i}`,
+        createdAt: at,
+      },
+    });
+
+    await prisma.transaction.create({
+      data: {
+        storeId: store.id,
+        clickId: click.id,
+        cuelinksTransactionId: externalId,
+        orderId: `ORD-${store.slug.toUpperCase()}-${100000 + i}`,
+        saleAmount: order.sale,
+        commissionAmount: order.commission,
+        customerAmount: order.customer,
+        platformAmount: order.commission - order.customer,
+        status: order.pending ? "PENDING" : "CONFIRMED",
+        transactionDate: at,
+        confirmedAt: order.pending ? null : at,
+        createdAt: at,
+      },
+    });
+
+    await prisma.walletTransaction.upsert({
+      where: {
+        wallet_tx_dedupe: {
+          sourceTransactionId: externalId,
+          userId,
+          type: order.pending ? "CASHBACK_PENDING" : "CASHBACK_CONFIRMED",
+        },
+      },
+      update: {},
+      create: {
+        walletId: wallet.id,
+        userId,
+        type: order.pending ? "CASHBACK_PENDING" : "CASHBACK_CONFIRMED",
+        amount: order.customer,
+        status: order.pending ? "PENDING" : "COMPLETED",
+        source: "cashback",
+        sourceTransactionId: externalId,
+        description: `Cashback from ${store.name}`,
+        createdAt: at,
+      },
+    });
+  }
+
+  // --- A profit link the user shared, and purchases through it -------------
+  const linkStore = stores.find((s) => s.slug === "myntra") ?? stores[0];
+  const profitLink = await prisma.profitLink.upsert({
+    where: { code: "DEMOLINK" },
+    update: {},
+    create: {
+      code: "DEMOLINK",
+      userId,
+      storeId: linkStore.id,
+      originalUrl: `https://www.${linkStore.slug}.com/demo-product/12345`,
+      destinationUrl: `https://www.${linkStore.slug}.com/demo-product/12345`,
+      createdAt: daysAgo(12),
+    },
+  });
+
+  const AFFILIATE_ORDERS = [
+    { days: 3, sale: 3200, commission: 256, profit: 51.2, converted: true },
+    { days: 5, sale: 1750, commission: 140, profit: 28, converted: true },
+    { days: 7, sale: 0, commission: 0, profit: 0, converted: false }, // click only
+    { days: 8, sale: 0, commission: 0, profit: 0, converted: false },
+  ];
+
+  for (const [i, order] of AFFILIATE_ORDERS.entries()) {
+    const externalId = `seed_pl_${userId}_${i}`;
+    const already = await prisma.transaction.findUnique({
+      where: {
+        storeId_cuelinksTransactionId: {
+          storeId: linkStore.id,
+          cuelinksTransactionId: externalId,
+        },
+      },
+    });
+    if (already) continue;
+
+    const at = daysAgo(order.days);
+    // Deliberately no userId: these are clicks by other people on a shared link.
+    const click = await prisma.click.create({
+      data: {
+        storeId: linkStore.id,
+        clickType: "PROFIT_LINK",
+        profitLinkId: profitLink.id,
+        originalUrl: profitLink.originalUrl,
+        trackingUrl: `https://linksredirect.com/?demo_pl=${i}`,
+        createdAt: at,
+      },
+    });
+
+    if (!order.converted) continue;
+
+    await prisma.transaction.create({
+      data: {
+        storeId: linkStore.id,
+        clickId: click.id,
+        cuelinksTransactionId: externalId,
+        orderId: `ORD-PL-${200000 + i}`,
+        saleAmount: order.sale,
+        commissionAmount: order.commission,
+        profitLinkAmount: order.profit,
+        platformAmount: order.commission - order.profit,
+        status: "CONFIRMED",
+        transactionDate: at,
+        confirmedAt: at,
+        createdAt: at,
+      },
+    });
+
+    await prisma.walletTransaction.upsert({
+      where: {
+        wallet_tx_dedupe: {
+          sourceTransactionId: externalId,
+          userId,
+          type: "PROFIT_LINK_EARNING",
+        },
+      },
+      update: {},
+      create: {
+        walletId: wallet.id,
+        userId,
+        type: "PROFIT_LINK_EARNING",
+        amount: order.profit,
+        status: "COMPLETED",
+        source: "profit_link",
+        sourceTransactionId: externalId,
+        description: `Profit link earning — ${linkStore.name}`,
+        createdAt: at,
+      },
+    });
+  }
+
+  await prisma.profitLink.update({
+    where: { id: profitLink.id },
+    data: { clickCount: AFFILIATE_ORDERS.length },
+  });
+
+  // --- A welcome bonus, so the Bonuses tab isn't empty ----------------------
+  await prisma.walletTransaction.upsert({
+    where: {
+      wallet_tx_dedupe: {
+        sourceTransactionId: `seed_bonus_${userId}`,
+        userId,
+        type: "ADJUSTMENT",
+      },
+    },
+    update: {},
+    create: {
+      walletId: wallet.id,
+      userId,
+      type: "ADJUSTMENT",
+      amount: 50,
+      status: "COMPLETED",
+      source: "bonus",
+      sourceTransactionId: `seed_bonus_${userId}`,
+      description: "Welcome bonus",
+      createdAt: daysAgo(14),
+    },
+  });
+
+  // --- Rebuild the wallet's cached aggregates from the ledger ---------------
+  // These columns are a cache of the rows above; recomputing beats hand-setting
+  // numbers that would drift from what the ledger actually says.
+  const [confirmed, pending, withdrawals, reversals] = await Promise.all([
+    prisma.walletTransaction.aggregate({
+      where: {
+        userId,
+        status: "COMPLETED",
+        type: { in: ["CASHBACK_CONFIRMED", "PROFIT_LINK_EARNING", "REFERRAL_EARNING", "ADJUSTMENT"] },
+      },
+      _sum: { amount: true },
+    }),
+    prisma.walletTransaction.aggregate({
+      where: { userId, status: "PENDING", type: "CASHBACK_PENDING" },
+      _sum: { amount: true },
+    }),
+    prisma.walletTransaction.aggregate({
+      where: { userId, type: "WITHDRAWAL", status: "COMPLETED" },
+      _sum: { amount: true },
+    }),
+    prisma.walletTransaction.aggregate({
+      where: {
+        userId,
+        type: {
+          in: ["CASHBACK_REVERSED", "PROFIT_LINK_EARNING_REVERSED", "REFERRAL_EARNING_REVERSED"],
+        },
+      },
+      _sum: { amount: true },
+    }),
+  ]);
+
+  const earned = Number(confirmed._sum.amount ?? 0) - Number(reversals._sum.amount ?? 0);
+  const paidOut = Number(withdrawals._sum.amount ?? 0);
+
+  await prisma.wallet.update({
+    where: { userId },
+    data: {
+      lifetimeEarned: earned,
+      confirmedBalance: earned,
+      availableBalance: earned - paidOut,
+      withdrawn: paidOut,
+      pendingCashback: Number(pending._sum.amount ?? 0),
+    },
+  });
+}
+
 function referralCode(seed: string) {
   return seed.toUpperCase().slice(0, 8);
 }
@@ -547,6 +805,7 @@ async function main() {
   });
 
   await seedReferralDemo(demo.id);
+  await seedActivityDemo(demo.id);
 
   console.log("Seeding settings...");
   await prisma.setting.upsert({
