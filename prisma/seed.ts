@@ -232,6 +232,160 @@ function defaultPageContent(store: {
   };
 }
 
+/**
+ * Demo referrals for the Refer & Earn page, so it renders with all three states
+ * (active / pending / inactive) rather than an empty table.
+ *
+ * Everything is derived from real rows — the friends are real users with real
+ * wallets, the order counts come from real Click + Transaction rows, and the
+ * referrer's earnings are real wallet ledger entries. Nothing on the page reads
+ * from a hardcoded number.
+ */
+async function seedReferralDemo(referrerId: string) {
+  console.log("Seeding demo referrals...");
+
+  // `earningStatus` drives the referrer's ledger row: COMPLETED counts toward
+  // Total Earnings, PENDING toward Pending Earnings. Both are represented so
+  // neither KPI reads zero on a fresh install.
+  const FRIENDS = [
+    { name: "Ananya Singh", email: "ananya.demo@example.com", daysAgo: 96, orders: 3, cashback: 1245.5, earned: 62.28, status: "ACTIVE" as const, earningStatus: "COMPLETED" as const },
+    { name: "Rahul Verma", email: "rahul.demo@example.com", daysAgo: 74, orders: 1, cashback: 750, earned: 37.5, status: "ACTIVE" as const, earningStatus: "COMPLETED" as const },
+    { name: "Neha Sharma", email: "neha.demo@example.com", daysAgo: 41, orders: 0, cashback: 0, earned: 0, status: "ACTIVE" as const, earningStatus: "COMPLETED" as const },
+    { name: "Amit Kumar", email: "amit.demo@example.com", daysAgo: 18, orders: 2, cashback: 890.3, earned: 44.51, status: "ACTIVE" as const, earningStatus: "PENDING" as const },
+    { name: "Priya Patel", email: "priya.demo@example.com", daysAgo: 6, orders: 0, cashback: 0, earned: 0, status: "EXPIRED" as const, earningStatus: "COMPLETED" as const },
+  ];
+
+  const referrer = await prisma.user.findUnique({
+    where: { id: referrerId },
+    select: { referralCode: true },
+  });
+  if (!referrer) return;
+
+  const store = await prisma.store.findFirst({ where: { slug: "flipkart" } });
+  const wallet = await prisma.wallet.findUnique({ where: { userId: referrerId } });
+  if (!store || !wallet) return;
+
+  const friendPasswordHash = await bcrypt.hash("Friend@12345", 10);
+
+  for (const friend of FRIENDS) {
+    const joinedAt = new Date(Date.now() - friend.daysAgo * 24 * 60 * 60 * 1000);
+
+    const user = await prisma.user.upsert({
+      where: { email: friend.email },
+      update: {},
+      create: {
+        email: friend.email,
+        passwordHash: friendPasswordHash,
+        name: friend.name,
+        role: "USER",
+        referralCode: referralCode(friend.email),
+        createdAt: joinedAt,
+      },
+    });
+
+    await prisma.wallet.upsert({
+      where: { userId: user.id },
+      update: { lifetimeEarned: friend.cashback },
+      create: { userId: user.id, lifetimeEarned: friend.cashback },
+    });
+
+    await prisma.referral.upsert({
+      where: { referredUserId: user.id },
+      update: { totalEarned: friend.earned, status: friend.status },
+      create: {
+        referrerId,
+        referredUserId: user.id,
+        code: referrer.referralCode,
+        status: friend.status,
+        totalEarned: friend.earned,
+        createdAt: joinedAt,
+      },
+    });
+
+    // Orders: one Click + Transaction pair each, so the page's order counts come
+    // from the same tables a real order would land in.
+    for (let i = 0; i < friend.orders; i++) {
+      const externalId = `seed_${user.id}_${i}`;
+      const existing = await prisma.transaction.findUnique({
+        where: {
+          storeId_cuelinksTransactionId: {
+            storeId: store.id,
+            cuelinksTransactionId: externalId,
+          },
+        },
+      });
+      if (existing) continue;
+
+      const click = await prisma.click.create({
+        data: {
+          userId: user.id,
+          storeId: store.id,
+          clickType: "DIRECT_CASHBACK",
+          originalUrl: `https://www.flipkart.com/demo-order-${i}`,
+          trackingUrl: `https://linksredirect.com/?demo=${i}`,
+          createdAt: joinedAt,
+        },
+      });
+
+      await prisma.transaction.create({
+        data: {
+          storeId: store.id,
+          clickId: click.id,
+          cuelinksTransactionId: externalId,
+          saleAmount: 2500,
+          commissionAmount: 150,
+          customerAmount: 105,
+          referralAmount: 7.5,
+          platformAmount: 22.5,
+          status: "CONFIRMED",
+          transactionDate: joinedAt,
+          confirmedAt: joinedAt,
+          createdAt: joinedAt,
+        },
+      });
+    }
+
+    // The referrer's own ledger entries for this friend's activity.
+    if (friend.earned > 0) {
+      await prisma.walletTransaction.upsert({
+        where: {
+          wallet_tx_dedupe: {
+            sourceTransactionId: `seed_referral_${user.id}`,
+            userId: referrerId,
+            type: "REFERRAL_EARNING",
+          },
+        },
+        update: { amount: friend.earned, status: friend.earningStatus },
+        create: {
+          walletId: wallet.id,
+          userId: referrerId,
+          type: "REFERRAL_EARNING",
+          amount: friend.earned,
+          status: friend.earningStatus,
+          source: "referral",
+          sourceTransactionId: `seed_referral_${user.id}`,
+          description: `Referral earning from ${friend.name}`,
+          createdAt: joinedAt,
+        },
+      });
+    }
+  }
+
+  // Keep the wallet's cached aggregate consistent with the ledger rows above.
+  const confirmed = await prisma.walletTransaction.aggregate({
+    where: { userId: referrerId, type: "REFERRAL_EARNING", status: "COMPLETED" },
+    _sum: { amount: true },
+  });
+  await prisma.wallet.update({
+    where: { userId: referrerId },
+    data: {
+      availableBalance: confirmed._sum.amount ?? 0,
+      confirmedBalance: confirmed._sum.amount ?? 0,
+      lifetimeEarned: confirmed._sum.amount ?? 0,
+    },
+  });
+}
+
 function referralCode(seed: string) {
   return seed.toUpperCase().slice(0, 8);
 }
@@ -391,6 +545,8 @@ async function main() {
     update: {},
     create: { userId: demo.id },
   });
+
+  await seedReferralDemo(demo.id);
 
   console.log("Seeding settings...");
   await prisma.setting.upsert({
