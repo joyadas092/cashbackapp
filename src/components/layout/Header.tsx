@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/Button";
 import { LogoMark } from "@/components/shared/LogoMark";
 import { UserMenu } from "./UserMenu";
 import { HeaderNav } from "./HeaderNav";
+import { MobileMenu } from "./MobileMenu";
+import { primaryNavLinks } from "./navLinks";
 
 export async function Header() {
   const session = await auth();
@@ -25,16 +27,25 @@ export async function Header() {
   return (
     <header className="sticky top-0 z-40 border-b border-white/10 bg-navy-950/95 backdrop-blur-md">
       {/* Fixed h-16 so DashboardShell's sidebar can offset below it predictably */}
-      <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4">
+      <div className="mx-auto flex h-16 max-w-7xl items-center gap-2 px-4 sm:gap-4">
+        <MobileMenu
+          links={primaryNavLinks(Boolean(session?.user))}
+          isLoggedIn={Boolean(session?.user)}
+          isAdmin={session?.user?.role === "ADMIN"}
+        />
+
         <Link
           href="/"
-          className="flex shrink-0 items-center gap-2 text-lg font-extrabold tracking-tight text-white"
+          className="flex shrink-0 items-center gap-2 text-base font-extrabold tracking-tight text-white sm:text-lg"
         >
-          <LogoMark size={28} />
+          <LogoMark size={26} />
           Cashback<span className="text-cashlime-400">.</span>
         </Link>
 
-        <HeaderNav isAdmin={session?.user?.role === "ADMIN"} />
+        <HeaderNav
+          isAdmin={session?.user?.role === "ADMIN"}
+          isLoggedIn={Boolean(session?.user)}
+        />
 
         {/* Search — visible from md up, matching the reference's persistent search */}
         <form action="/stores" className="relative ml-auto hidden max-w-sm flex-1 md:block">
@@ -69,7 +80,9 @@ export async function Header() {
             </>
           ) : (
             <>
-              <Link href="/login">
+              {/* Login is hidden on phones — the slide-over menu carries it, and
+                  two buttons plus the hamburger crowds a narrow header. */}
+              <Link href="/login" className="hidden sm:block">
                 <Button variant="outline" size="sm">
                   Login
                 </Button>

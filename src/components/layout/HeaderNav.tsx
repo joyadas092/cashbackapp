@@ -3,25 +3,21 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { primaryNavLinks } from "./navLinks";
 
-const ITEMS: Array<{ href: string; label: string; disabled?: boolean }> = [
-  { href: "/", label: "Home" },
-  { href: "/stores", label: "Stores" },
-  { href: "/share-earn", label: "Share & Earn" },
-  // Points at the public page, not /dashboard/refer — a logged-out visitor
-  // clicking this in the header should land on the pitch, not a login wall.
-  // The public page links signed-in users through to their dashboard view.
-  { href: "/refer-earn", label: "Refer & Earn" },
-  { href: "#", label: "Deals", disabled: true },
-  { href: "#", label: "Help", disabled: true },
-];
-
-export function HeaderNav({ isAdmin }: { isAdmin?: boolean }) {
+export function HeaderNav({
+  isAdmin,
+  isLoggedIn,
+}: {
+  isAdmin?: boolean;
+  isLoggedIn: boolean;
+}) {
   const pathname = usePathname();
+  const items = primaryNavLinks(isLoggedIn);
 
   return (
     <nav className="hidden items-center gap-1 lg:flex">
-      {ITEMS.map((item) => {
+      {items.map((item) => {
         if (item.disabled) {
           return (
             <span
@@ -34,8 +30,7 @@ export function HeaderNav({ isAdmin }: { isAdmin?: boolean }) {
           );
         }
 
-        const active =
-          item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+        const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
 
         return (
           <Link

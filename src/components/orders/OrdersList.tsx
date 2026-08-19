@@ -137,6 +137,24 @@ export function OrdersList({ orders }: { orders: OrderRow[] }) {
                     <span className="block truncate font-mono text-xs text-slate-400">
                       {order.orderId}
                     </span>
+                    {/* Below xl the date/status/confirmation columns are gone, so
+                        the two facts that actually matter move in here rather
+                        than disappearing on a phone. */}
+                    <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 xl:hidden">
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                          STATUS_STYLES[order.status] ?? "bg-slate-100 text-slate-600"
+                        }`}
+                      >
+                        {order.status.charAt(0) + order.status.slice(1).toLowerCase()}
+                      </span>
+                      <span className="text-[11px] text-slate-400">
+                        {formatDate(order.placedAt)}
+                      </span>
+                      <span className="text-[11px] text-slate-400">
+                        · {confirmationLabel(order)}
+                      </span>
+                    </span>
                   </span>
                 </span>
 

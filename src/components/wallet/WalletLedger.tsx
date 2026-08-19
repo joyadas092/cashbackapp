@@ -185,8 +185,24 @@ export function WalletLedger({ pendingWithdrawalIds }: { pendingWithdrawalIds: s
                       <span className="block truncate text-sm font-semibold text-slate-900">
                         {row.description ?? meta.label}
                       </span>
-                      <span className="block truncate text-xs text-slate-400 lg:hidden">
-                        {meta.label}
+                      {/* The type and status columns are hidden below lg, so
+                          they ride along with the description instead of being
+                          dropped entirely on a phone. */}
+                      <span className="mt-1 flex flex-wrap items-center gap-1.5 lg:hidden">
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${meta.tone}`}
+                        >
+                          {meta.label}
+                        </span>
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                            STATUS_TONES[row.status] ?? "bg-slate-100 text-slate-600"
+                          }`}
+                        >
+                          {row.status === "PENDING" && row.type === "WITHDRAWAL"
+                            ? "Requested"
+                            : row.status.charAt(0) + row.status.slice(1).toLowerCase()}
+                        </span>
                       </span>
                     </span>
 

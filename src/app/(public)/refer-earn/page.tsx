@@ -143,14 +143,14 @@ export default async function PublicReferEarnPage() {
 
       {/* ---------------- Hero ---------------- */}
       <section className="relative bg-gradient-to-b from-violet-50 via-violet-50/60 to-slate-50">
-        <div className="mx-auto grid max-w-[1400px] items-center gap-10 px-4 pb-32 pt-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:pb-40 lg:pt-14">
+        <div className="mx-auto grid max-w-[1400px] items-center gap-10 px-4 pb-28 pt-8 sm:pb-32 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:pb-40 lg:pt-14">
           <div>
             <span className="inline-flex items-center gap-2 rounded-full bg-violet-100 px-4 py-1.5 text-xs font-bold uppercase tracking-wide text-violet-700">
               <Gift size={14} strokeWidth={2.5} />
               Refer &amp; Earn
             </span>
 
-            <h1 className="mt-5 text-5xl font-extrabold leading-[1.05] tracking-tight text-slate-900 lg:text-6xl">
+            <h1 className="mt-5 text-4xl font-extrabold leading-[1.05] tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
               {rule?.publicHeadline ?? "Refer Friends,"}
               <br />
               <span className="text-violet-700">Earn More!</span>
@@ -206,7 +206,7 @@ export default async function PublicReferEarnPage() {
       {/* ---------------- Share bar, overlapping the hero ---------------- */}
       <div className="bg-slate-50">
         <div className="mx-auto max-w-[1400px] px-4">
-          <div className="relative z-10 -mt-24">
+          <div className="relative z-10 -mt-16 sm:-mt-24">
             <PublicShareBar shareUrl={shareUrl} />
           </div>
 
