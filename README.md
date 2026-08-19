@@ -42,10 +42,26 @@ npm run db:seed
 npm run dev
 ```
 
+After the first-time setup, `npm run start:dev` does steps 1 and 4 together (brings the
+containers up, then starts the dev server).
+
 Visit `http://localhost:3000`. Demo logins (created by the seed script):
 
 - Admin: `admin@example.com` / `Admin@12345`
 - User: `demo@example.com` / `Demo@12345`
+
+## Troubleshooting
+
+**Every page returns 500 / "Can't reach database server at `localhost:5433`"** — Docker isn't
+running. The database lives in a container (see `docker-compose.yml`), so closing Docker
+Desktop takes the whole app down with it. Start Docker Desktop, then:
+
+```bash
+docker compose up -d
+```
+
+Data is not lost when this happens — it persists in the `cashback_postgres_data` Docker
+volume across container and machine restarts.
 
 ## Cuelinks integration
 
