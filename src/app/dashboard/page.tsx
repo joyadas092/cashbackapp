@@ -60,7 +60,7 @@ export default async function DashboardPage() {
             Shop &amp; Earn
           </Button>
         </Link>
-        <Link href="/dashboard/share-earn">
+        <Link href="/share-earn">
           <Button variant="outlineLight" className="w-full">
             Share &amp; Earn
           </Button>

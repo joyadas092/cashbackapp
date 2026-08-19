@@ -28,7 +28,7 @@ import { cn } from "@/lib/utils";
 const NAV_ITEMS: Array<{ href: string; icon: LucideIcon; label: string; disabled?: boolean }> = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/dashboard#wallet", icon: Wallet, label: "Wallet" },
-  { href: "/dashboard/share-earn", icon: Link2, label: "Profit Links" },
+  { href: "/share-earn", icon: Link2, label: "Profit Links" },
   { href: "/dashboard/refer", icon: Users, label: "Refer & Earn" },
   { href: "/dashboard/activity", icon: Activity, label: "My Activity" },
   { href: "/dashboard/profile", icon: Settings, label: "Settings" },

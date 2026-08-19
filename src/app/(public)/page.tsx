@@ -82,7 +82,7 @@ export default async function HomePage() {
                   Shop &amp; Earn Cashback
                 </Button>
               </Link>
-              <Link href="/dashboard/share-earn">
+              <Link href="/share-earn">
                 <Button variant="outline" size="lg">
                   <Link2 size={18} strokeWidth={2} />
                   Create Profit Link
@@ -161,7 +161,7 @@ export default async function HomePage() {
                 title: "Share & Earn",
                 body: "Create profit links for any product and earn commissions on every purchase.",
                 cta: "Create Now",
-                href: "/dashboard/share-earn",
+                href: "/share-earn",
                 card: "border-violet-100 bg-violet-50",
                 chip: "bg-violet-600 text-white",
                 link: "text-violet-700",

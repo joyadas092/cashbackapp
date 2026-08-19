@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 const ITEMS: Array<{ href: string; label: string; disabled?: boolean }> = [
   { href: "/", label: "Home" },
   { href: "/stores", label: "Stores" },
-  { href: "/dashboard/share-earn", label: "Share & Earn" },
+  { href: "/share-earn", label: "Share & Earn" },
   { href: "/dashboard/refer", label: "Refer & Earn" },
   { href: "#", label: "Deals", disabled: true },
   { href: "#", label: "Help", disabled: true },
