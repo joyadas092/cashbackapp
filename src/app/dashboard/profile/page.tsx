@@ -1,29 +1,39 @@
 import { redirect } from "next/navigation";
+import { LogOut } from "lucide-react";
 import { auth, signOut } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { Card } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
+import { AccountForm } from "@/components/profile/AccountForm";
+import { SecurityForm } from "@/components/profile/SecurityForm";
 import { ProfileForm } from "@/components/profile/ProfileForm";
 import { SettingsSubNav } from "@/components/profile/SettingsSubNav";
 
-type ProfileFormBankDetails = { accountHolder?: string; accountNumber?: string; ifsc?: string };
+type BankDetails = { accountHolder?: string; accountNumber?: string; ifsc?: string };
 
 export default async function ProfilePage() {
   const session = await auth();
+  // Layout guards too, but Next fetches layout and page data in parallel.
   if (!session?.user) {
     redirect("/login?callbackUrl=/dashboard/profile");
   }
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    include: { profile: true },
-  });
+  const [user, lastPasswordChange] = await Promise.all([
+    prisma.user.findUnique({ where: { id: session.user.id }, include: { profile: true } }),
+    prisma.auditLog.findFirst({
+      where: { actorUserId: session.user.id, action: "password_change" },
+      orderBy: { createdAt: "desc" },
+      select: { createdAt: true },
+    }),
+  ]);
   if (!user) redirect("/login");
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-8">
-      <h1 className="text-2xl font-extrabold text-slate-900">Settings</h1>
-      <p className="mt-1 text-slate-500">Manage your account, preferences and payout details.</p>
+    <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6">
+      <header>
+        <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">Settings</h1>
+        <p className="mt-1 text-slate-500">
+          Manage your account, payout details and password.
+        </p>
+      </header>
 
       <div className="mt-6 flex flex-col gap-6 lg:flex-row">
         <div className="w-full shrink-0 lg:w-80">
@@ -31,47 +41,40 @@ export default async function ProfilePage() {
         </div>
 
         <div className="min-w-0 flex-1 space-y-6">
-          <Card variant="light" className="p-6">
-            <h2 className="text-lg font-bold text-slate-900">Profile Settings</h2>
-            <p className="mt-0.5 text-sm text-slate-500">Your personal information</p>
-            <dl className="mt-4 grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
-              <div>
-                <dt className="text-xs font-medium text-slate-500">Full Name</dt>
-                <dd className="mt-1 font-medium text-slate-900">{user.name}</dd>
-              </div>
-              <div>
-                <dt className="text-xs font-medium text-slate-500">Email Address</dt>
-                <dd className="mt-1 flex items-center gap-2 font-medium text-slate-900">
-                  {user.email}
-                  <span className="rounded-full bg-cashlime-50 px-2 py-0.5 text-[10px] font-semibold text-cashlime-700">
-                    Verified
-                  </span>
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs font-medium text-slate-500">Mobile Number</dt>
-                <dd className="mt-1 font-medium text-slate-900">{user.phone ?? "Not added"}</dd>
-              </div>
-              <div>
-                <dt className="text-xs font-medium text-slate-500">Referral Code</dt>
-                <dd className="mt-1 font-bold tracking-wide text-violet-700">
-                  {user.referralCode}
-                </dd>
-              </div>
-            </dl>
-          </Card>
+          <AccountForm
+            initial={{
+              name: user.name,
+              email: user.email,
+              phone: user.phone ?? "",
+              referralCode: user.referralCode,
+            }}
+          />
+
+          <SecurityForm
+            lastChangedAt={
+              lastPasswordChange
+                ? lastPasswordChange.createdAt.toLocaleDateString("en-IN", {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                  })
+                : null
+            }
+          />
 
           <ProfileForm
             initial={{
               upiId: user.profile?.upiId ?? null,
-              bankDetails: (user.profile?.bankDetails as ProfileFormBankDetails | null) ?? null,
+              bankDetails: (user.profile?.bankDetails as BankDetails | null) ?? null,
               kycStatus: user.profile?.kycStatus ?? null,
             }}
           />
 
-          <Card variant="light" className="p-6">
-            <h2 className="text-lg font-bold text-slate-900">Account</h2>
-            <p className="mt-0.5 text-sm text-slate-500">Sign out of this device.</p>
+          <section className="rounded-xl2 border border-slate-200 bg-white p-5 shadow-card sm:p-6">
+            <h2 className="text-lg font-bold text-slate-900">Sign out</h2>
+            <p className="mt-0.5 text-sm text-slate-500">
+              Ends your session on this device only.
+            </p>
             <form
               className="mt-4"
               action={async () => {
@@ -79,11 +82,15 @@ export default async function ProfilePage() {
                 await signOut({ redirectTo: "/" });
               }}
             >
-              <Button variant="outlineLight" type="submit">
+              <button
+                type="submit"
+                className="flex items-center gap-2 rounded-xl border border-slate-300 px-5 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+              >
+                <LogOut size={16} strokeWidth={2} />
                 Logout
-              </Button>
+              </button>
             </form>
-          </Card>
+          </section>
         </div>
       </div>
     </div>

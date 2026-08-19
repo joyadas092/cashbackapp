@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ChevronDown, LayoutDashboard, LogOut, Settings, Wallet } from "lucide-react";
+import { ChevronDown, LayoutDashboard, LogOut, Package, Settings, Wallet } from "lucide-react";
 import { Avatar } from "@/components/shared/Avatar";
 import { formatInr } from "@/lib/utils";
 
@@ -50,8 +50,9 @@ export function UserMenu({
           </div>
           <nav className="py-1">
             {[
-              { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-              { href: "/dashboard", icon: Wallet, label: "My Wallet" },
+              { href: "/dashboard/activity", icon: LayoutDashboard, label: "My Activity" },
+              { href: "/dashboard/wallet", icon: Wallet, label: "My Wallet" },
+              { href: "/dashboard/orders", icon: Package, label: "Orders" },
               { href: "/dashboard/profile", icon: Settings, label: "Settings" },
             ].map((item) => (
               <Link

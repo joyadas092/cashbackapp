@@ -73,6 +73,34 @@ export const adminCampaignImportSchema = z.discriminatedUnion("action", [
 ]);
 export type AdminCampaignImportInput = z.infer<typeof adminCampaignImportSchema>;
 
+export const accountUpdateSchema = z.object({
+  name: z.string().trim().min(2).max(100),
+  // Indian mobile numbers, optional. Stored as digits only so the unique
+  // constraint can't be sidestepped by formatting the same number differently.
+  phone: z
+    .string()
+    .trim()
+    .transform((v) => v.replace(/[\s-]/g, ""))
+    .refine((v) => v === "" || /^(\+91)?[6-9]\d{9}$/.test(v), "Enter a valid 10-digit mobile number")
+    .transform((v) => (v === "" ? null : v.replace(/^\+91/, "")))
+    .nullable()
+    .optional(),
+});
+export type AccountUpdateInput = z.infer<typeof accountUpdateSchema>;
+
+export const passwordChangeSchema = z
+  .object({
+    currentPassword: z.string().min(1, "Enter your current password"),
+    // Matches registerSchema: bcrypt silently truncates past 72 bytes, so
+    // allowing longer would mean accepting a password we don't fully check.
+    newPassword: z.string().min(8, "Use at least 8 characters").max(72),
+  })
+  .refine((v) => v.currentPassword !== v.newPassword, {
+    message: "Your new password must be different from your current one",
+    path: ["newPassword"],
+  });
+export type PasswordChangeInput = z.infer<typeof passwordChangeSchema>;
+
 export const profileUpdateSchema = z.object({
   upiId: z.string().max(100).nullable().optional(),
   bankDetails: z

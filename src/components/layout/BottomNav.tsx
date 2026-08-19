@@ -4,7 +4,7 @@ import { Activity, Home, Store, User, Wallet, type LucideIcon } from "lucide-rea
 const ITEMS: Array<{ href: string; label: string; icon: LucideIcon }> = [
   { href: "/", label: "Home", icon: Home },
   { href: "/stores", label: "Stores", icon: Store },
-  { href: "/dashboard", label: "Wallet", icon: Wallet },
+  { href: "/dashboard/wallet", label: "Wallet", icon: Wallet },
   { href: "/dashboard/activity", label: "Activity", icon: Activity },
   { href: "/dashboard/profile", label: "Profile", icon: User },
 ];

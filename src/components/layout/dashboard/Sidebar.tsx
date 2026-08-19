@@ -2,18 +2,16 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   Activity,
   Bell,
   Gift,
-  LayoutDashboard,
   LifeBuoy,
   Link2,
   type LucideIcon,
   Menu,
   Package,
-  Receipt,
   Settings,
   Tag,
   Users,
@@ -23,17 +21,34 @@ import {
 import { LogoMark } from "@/components/shared/LogoMark";
 import { Button } from "@/components/ui/Button";
 import { SidebarNavItem } from "./SidebarNavItem";
+import { SidebarNavGroup, type SidebarSubItem } from "./SidebarNavGroup";
+import { ACTIVITY_TABS } from "@/components/activity/ActivityTabs";
 import { cn } from "@/lib/utils";
 
+// My Activity is the app's home now — it already carries the wallet-wide
+// numbers the old Dashboard summarised, so a separate overview page was just
+// one more click to the same figures.
+const ACTIVITY_SUB_ITEMS: SidebarSubItem[] = ACTIVITY_TABS.map((tab) => ({
+  tab: tab.key,
+  label: tab.label,
+  href:
+    tab.key === "overview" ? "/dashboard/activity" : `/dashboard/activity?tab=${tab.key}`,
+}));
+
 const NAV_ITEMS: Array<{ href: string; icon: LucideIcon; label: string; disabled?: boolean }> = [
-  { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/dashboard/wallet", icon: Wallet, label: "Wallet" },
+  { href: "/dashboard/orders", icon: Package, label: "Orders" },
   { href: "/share-earn", icon: Link2, label: "Profit Links" },
   { href: "/dashboard/refer", icon: Users, label: "Refer & Earn" },
-  { href: "/dashboard/activity", icon: Activity, label: "My Activity" },
+];
+
+const NAV_ITEMS_AFTER: Array<{
+  href: string;
+  icon: LucideIcon;
+  label: string;
+  disabled?: boolean;
+}> = [
   { href: "/dashboard/profile", icon: Settings, label: "Settings" },
-  { href: "#", icon: Package, label: "Orders", disabled: true },
-  { href: "#", icon: Receipt, label: "Transactions", disabled: true },
   { href: "#", icon: Tag, label: "Deals", disabled: true },
   { href: "#", icon: Bell, label: "Notifications", disabled: true },
   { href: "#", icon: LifeBuoy, label: "Help & Support", disabled: true },
@@ -47,6 +62,7 @@ export function Sidebar({
   onSignOut: () => Promise<void>;
 }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [open, setOpen] = useState(false);
 
   return (
@@ -93,7 +109,17 @@ export function Sidebar({
           </div>
 
           <nav className="flex flex-col gap-1">
-            {NAV_ITEMS.map((item) => (
+            <SidebarNavGroup
+              href="/dashboard/activity"
+              icon={Activity}
+              label="My Activity"
+              items={ACTIVITY_SUB_ITEMS}
+              sectionActive={pathname === "/dashboard/activity"}
+              activeTab={searchParams.get("tab") ?? "overview"}
+              onNavigate={() => setOpen(false)}
+            />
+
+            {[...NAV_ITEMS, ...NAV_ITEMS_AFTER].map((item) => (
               <SidebarNavItem
                 key={item.label}
                 href={item.href}
