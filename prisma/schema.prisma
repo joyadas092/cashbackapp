@@ -85,6 +85,24 @@ enum WithdrawalStatus {
   @@map("withdrawal_status")
 }
 
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+
+  @@map("ticket_status")
+}
+
+enum TicketPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+
+  @@map("ticket_priority")
+}
+
 enum WithdrawalMethod {
   UPI
   BANK_TRANSFER
@@ -154,6 +172,8 @@ model User {
   referredBy         Referral?           @relation("ReferredBy")
   favorites          StoreFavorite[]
   withdrawals        WithdrawalRequest[]
+  supportTickets     SupportTicket[]
+  supportMessages    SupportTicketMessage[]
 
   @@map("users")
 }
@@ -470,6 +490,99 @@ model WithdrawalRequest {
   @@index([userId, requestedAt])
   @@index([status])
   @@map("withdrawal_requests")
+}
+
+// ---------------------------------------------------------------------------
+// Help & Support
+// ---------------------------------------------------------------------------
+
+/// A help article or FAQ entry, written in the admin panel.
+///
+/// FAQs and long-form articles share this table and differ only by `isFaq`:
+/// both are a title plus a body that admins maintain, and splitting them into
+/// two models would duplicate every field and every screen for no gain.
+model HelpArticle {
+  id        String  @id @default(cuid())
+  slug      String  @unique
+  title     String
+  excerpt   String?
+  body      String
+  category  String  @default("General")
+  /// Short answers shown in the FAQs view rather than the article list.
+  isFaq     Boolean @default(false) @map("is_faq")
+  isPublished Boolean @default(true) @map("is_published")
+  /// Surfaced in "Popular Help Topics" — set by admins, not inferred.
+  isPopular Boolean  @default(false) @map("is_popular")
+  sortOrder Int      @default(0) @map("sort_order")
+  viewCount Int      @default(0) @map("view_count")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([isPublished, isFaq, sortOrder])
+  @@index([category])
+  @@map("help_articles")
+}
+
+model SupportTicket {
+  id String @id @default(cuid())
+  /// Human-facing reference shown to the user, e.g. "TKT-48210".
+  ticketNumber String         @unique @map("ticket_number")
+  userId       String         @map("user_id")
+  subject      String
+  category     String         @default("General")
+  status       TicketStatus   @default(OPEN)
+  priority     TicketPriority @default(NORMAL)
+  /// Set when a ticket is closed so resolution time is measurable later.
+  resolvedAt   DateTime?      @map("resolved_at")
+  lastRepliedAt DateTime?     @map("last_replied_at")
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+
+  user     User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages SupportTicketMessage[]
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+  @@map("support_tickets")
+}
+
+model SupportTicketMessage {
+  id       String @id @default(cuid())
+  ticketId String @map("ticket_id")
+  /// Null once an author's account is deleted — the thread survives the user.
+  authorUserId String? @map("author_user_id")
+  body         String
+  /// Whether this came from support rather than the ticket's owner. Stored
+  /// rather than derived from the author's current role, so a user who is later
+  /// made an admin doesn't retroactively turn their old messages into staff
+  /// replies.
+  isStaffReply Boolean  @default(false) @map("is_staff_reply")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  ticket SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author User?         @relation(fields: [authorUserId], references: [id], onDelete: SetNull)
+
+  @@index([ticketId, createdAt])
+  @@map("support_ticket_messages")
+}
+
+/// Support contact channels shown on the Help page. Singleton, like
+/// ReferralRule — one active row, edited in the admin panel.
+model SupportSettings {
+  id              String   @id @default(cuid())
+  email           String?
+  phone           String?
+  whatsapp        String?
+  /// Free text, e.g. "Mon - Sun: 9:00 AM - 9:00 PM".
+  hours           String?
+  liveChatEnabled Boolean  @default(false) @map("live_chat_enabled")
+  liveChatNote    String?  @map("live_chat_note")
+  responseNote    String?  @map("response_note")
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("support_settings")
 }
 
 model ReferralRule {

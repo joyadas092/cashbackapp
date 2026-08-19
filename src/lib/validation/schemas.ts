@@ -73,6 +73,48 @@ export const adminCampaignImportSchema = z.discriminatedUnion("action", [
 ]);
 export type AdminCampaignImportInput = z.infer<typeof adminCampaignImportSchema>;
 
+export const createTicketSchema = z.object({
+  subject: z.string().trim().min(5, "Give your ticket a short subject").max(150),
+  category: z.string().trim().min(1).max(60),
+  message: z.string().trim().min(10, "Tell us a bit more so we can help").max(5000),
+});
+export type CreateTicketInput = z.infer<typeof createTicketSchema>;
+
+export const ticketReplySchema = z.object({
+  body: z.string().trim().min(1, "Write a reply first").max(5000),
+});
+export type TicketReplyInput = z.infer<typeof ticketReplySchema>;
+
+export const helpArticleSchema = z.object({
+  title: z.string().trim().min(3).max(200),
+  slug: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .min(3)
+    .max(120)
+    .regex(/^[a-z0-9-]+$/, "Slug must be lowercase letters, numbers and hyphens only"),
+  excerpt: z.string().trim().max(300).nullable().optional(),
+  body: z.string().trim().min(10).max(20000),
+  category: z.string().trim().min(1).max(60),
+  isFaq: z.boolean().default(false),
+  isPopular: z.boolean().default(false),
+  isPublished: z.boolean().default(true),
+  sortOrder: z.coerce.number().int().min(0).max(9999).default(0),
+});
+export type HelpArticleInput = z.infer<typeof helpArticleSchema>;
+
+export const supportSettingsSchema = z.object({
+  email: z.string().trim().email().max(150).nullable().optional().or(z.literal("")),
+  phone: z.string().trim().max(40).nullable().optional(),
+  whatsapp: z.string().trim().max(40).nullable().optional(),
+  hours: z.string().trim().max(120).nullable().optional(),
+  liveChatEnabled: z.boolean().default(false),
+  liveChatNote: z.string().trim().max(150).nullable().optional(),
+  responseNote: z.string().trim().max(150).nullable().optional(),
+});
+export type SupportSettingsInput = z.infer<typeof supportSettingsSchema>;
+
 export const accountUpdateSchema = z.object({
   name: z.string().trim().min(2).max(100),
   // Indian mobile numbers, optional. Stored as digits only so the unique

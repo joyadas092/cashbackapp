@@ -644,6 +644,214 @@ async function seedActivityDemo(userId: string) {
   });
 }
 
+/**
+ * Help articles, FAQs and support contact channels.
+ *
+ * Upserted by slug so re-running the seed refreshes the stock content without
+ * touching anything an admin has since written.
+ */
+async function seedHelpContent() {
+  console.log("Seeding help articles...");
+
+  const ARTICLES: Array<{
+    slug: string;
+    title: string;
+    excerpt?: string;
+    body: string;
+    category: string;
+    isFaq?: boolean;
+    isPopular?: boolean;
+    sortOrder: number;
+  }> = [
+    {
+      slug: "how-does-cashback-work",
+      title: "How does cashback work?",
+      excerpt: "Learn how to earn cashback on your online shopping.",
+      category: "Cashback",
+      isPopular: true,
+      sortOrder: 1,
+      body: `Stores pay us a commission when we send them a shopper. We share most of that commission back with you as cashback.
+
+To earn it, always start your shopping trip from CashbackApp: open the store page here and click "Earn Cashback". That opens the store through a tracked link, which is how the store knows the visit came from us.
+
+Complete your purchase in the same session, without opening the store again from somewhere else. If you start a fresh visit from an ad or another cashback site in between, that other source gets the credit instead.`,
+    },
+    {
+      slug: "track-my-order-and-cashback",
+      title: "How to track my order and cashback?",
+      excerpt: "Track your order status and cashback updates.",
+      category: "Cashback",
+      isPopular: true,
+      sortOrder: 2,
+      body: `Every tracked order appears under Orders, usually within 24 to 48 hours of your purchase.
+
+Each order shows its current status, the cashback amount, and an estimated confirmation date based on the store's own payout timeline.
+
+If an order still hasn't appeared 48 hours after you bought, raise a ticket with the store name, order ID and date, and we'll trace it.`,
+    },
+    {
+      slug: "when-will-i-receive-my-cashback",
+      title: "When will I receive my cashback?",
+      excerpt: "Find out cashback confirmation and payment timelines.",
+      category: "Cashback",
+      isPopular: true,
+      sortOrder: 3,
+      body: `Cashback goes through two stages.
+
+First it is tracked and shows as pending. At this point the store has told us an order happened, but the return window is still open.
+
+Once the store confirms the order — typically after its return window closes, which can take 60 to 90 days — the cashback is confirmed and moves into your available balance, where you can withdraw it.
+
+If an order is returned or cancelled, the cashback is reversed, even if it was already confirmed.`,
+    },
+    {
+      slug: "how-to-use-profit-links",
+      title: "How to use Profit Links?",
+      excerpt: "Create and share profit links to earn more.",
+      category: "Share & Earn",
+      isPopular: true,
+      sortOrder: 4,
+      body: `A profit link is your own tracked version of a normal product link. It sends the shopper to exactly the same product page, but tells us the visit came from you.
+
+Paste any product URL from a supported store into Share & Earn, and we'll return your link. Share it wherever you like.
+
+When someone buys through it, you earn a share of the commission — even if they never sign up. The buyer pays the same price they would have paid anyway.`,
+    },
+    {
+      slug: "payouts-and-withdrawal",
+      title: "Payouts and withdrawal",
+      excerpt: "Learn about withdrawal options and the payout process.",
+      category: "Wallet",
+      isPopular: true,
+      sortOrder: 5,
+      body: `You can withdraw your available balance once it clears the minimum withdrawal amount shown on the Wallet page.
+
+Choose UPI, bank transfer, Paytm or Amazon Pay, enter where the money should go, and submit the request.
+
+Requesting a withdrawal reserves that money straight away: it leaves your available balance and is held against the request. If you change your mind before it's processed, cancel the request from the Withdrawals tab and the money returns to your balance immediately.`,
+    },
+    {
+      slug: "refer-and-earn-explained",
+      title: "How Refer & Earn works",
+      excerpt: "Earn from what your friends do on CashbackApp.",
+      category: "Refer & Earn",
+      sortOrder: 6,
+      body: `Share your referral link or code. When a friend signs up through it, they're linked to you.
+
+From then on, you earn a share of what we make whenever they shop — for as long as the referral window lasts, and up to the cap shown on the Refer & Earn page.
+
+A person can only be referred once. Referral earnings follow the same confirmation rules as cashback, and are reversed if the underlying order is cancelled.`,
+    },
+  ];
+
+  const FAQS: Array<{ slug: string; title: string; body: string; category: string; sortOrder: number }> = [
+    {
+      slug: "faq-price-difference",
+      title: "Does shopping through CashbackApp cost me more?",
+      category: "Cashback",
+      sortOrder: 1,
+      body: "No. You pay exactly the same price as going to the store directly. Cashback comes out of the store's marketing commission, not your pocket.",
+    },
+    {
+      slug: "faq-coupon-codes",
+      title: "Can I use coupon codes from other sites?",
+      category: "Cashback",
+      sortOrder: 2,
+      body: "Using a code from somewhere else usually breaks tracking, and the cashback is lost. Only use codes listed on the store's page here.",
+    },
+    {
+      slug: "faq-missing-cashback",
+      title: "My cashback is missing. What do I do?",
+      category: "Cashback",
+      sortOrder: 3,
+      body: "Wait 48 hours first — tracking isn't instant. If it still hasn't appeared, raise a ticket with the store, order ID, order date and amount, and we'll chase it with the store.",
+    },
+    {
+      slug: "faq-minimum-withdrawal",
+      title: "Is there a minimum withdrawal amount?",
+      category: "Wallet",
+      sortOrder: 4,
+      body: "Yes. The current minimum is shown on the Wallet page next to your available balance.",
+    },
+    {
+      slug: "faq-referral-limit",
+      title: "How many friends can I refer?",
+      category: "Refer & Earn",
+      sortOrder: 5,
+      body: "There's no limit on how many people you can refer. There is a cap on how much a single referred friend can earn you — it's shown on the Refer & Earn page.",
+    },
+    {
+      slug: "faq-account-safety",
+      title: "Will support ever ask for my password?",
+      category: "Account",
+      sortOrder: 6,
+      body: "Never. Our team will never ask for your password, OTP or full bank account number — by email, phone or inside a ticket. Treat anyone who does as a scammer.",
+    },
+  ];
+
+  for (const article of ARTICLES) {
+    await prisma.helpArticle.upsert({
+      where: { slug: article.slug },
+      update: {
+        title: article.title,
+        excerpt: article.excerpt ?? null,
+        body: article.body,
+        category: article.category,
+        isFaq: false,
+        isPopular: article.isPopular ?? false,
+        sortOrder: article.sortOrder,
+      },
+      create: {
+        slug: article.slug,
+        title: article.title,
+        excerpt: article.excerpt ?? null,
+        body: article.body,
+        category: article.category,
+        isFaq: false,
+        isPopular: article.isPopular ?? false,
+        sortOrder: article.sortOrder,
+      },
+    });
+  }
+
+  for (const faq of FAQS) {
+    await prisma.helpArticle.upsert({
+      where: { slug: faq.slug },
+      update: {
+        title: faq.title,
+        body: faq.body,
+        category: faq.category,
+        isFaq: true,
+        sortOrder: faq.sortOrder,
+      },
+      create: {
+        slug: faq.slug,
+        title: faq.title,
+        body: faq.body,
+        category: faq.category,
+        isFaq: true,
+        sortOrder: faq.sortOrder,
+      },
+    });
+  }
+
+  const existingSettings = await prisma.supportSettings.findFirst({ where: { isActive: true } });
+  if (!existingSettings) {
+    await prisma.supportSettings.create({
+      data: {
+        email: "support@example.com",
+        hours: "Mon - Sun: 9:00 AM - 9:00 PM",
+        responseNote: "We usually reply within 24 hours",
+        // Phone, WhatsApp and live chat are left unset: seeding contact details
+        // nobody is staffing would put dead channels in front of real users.
+        // Fill them in under Admin -> Support Tickets -> Contact Settings.
+        liveChatEnabled: false,
+        isActive: true,
+      },
+    });
+  }
+}
+
 function referralCode(seed: string) {
   return seed.toUpperCase().slice(0, 8);
 }
@@ -806,6 +1014,8 @@ async function main() {
 
   await seedReferralDemo(demo.id);
   await seedActivityDemo(demo.id);
+
+  await seedHelpContent();
 
   console.log("Seeding settings...");
   await prisma.setting.upsert({

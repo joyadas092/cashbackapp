@@ -42,6 +42,13 @@ const NAV_ITEMS: Array<{ href: string; icon: LucideIcon; label: string; disabled
   { href: "/dashboard/refer", icon: Users, label: "Refer & Earn" },
 ];
 
+const HELP_SUB_ITEMS: SidebarSubItem[] = [
+  { tab: "center", label: "Help Center", href: "/dashboard/help/articles" },
+  { tab: "contact", label: "Contact Us", href: "/dashboard/help/tickets/new" },
+  { tab: "tickets", label: "My Tickets", href: "/dashboard/help/tickets" },
+  { tab: "faqs", label: "FAQs", href: "/dashboard/help/faqs" },
+];
+
 const NAV_ITEMS_AFTER: Array<{
   href: string;
   icon: LucideIcon;
@@ -51,8 +58,16 @@ const NAV_ITEMS_AFTER: Array<{
   { href: "/dashboard/profile", icon: Settings, label: "Settings" },
   { href: "#", icon: Tag, label: "Deals", disabled: true },
   { href: "#", icon: Bell, label: "Notifications", disabled: true },
-  { href: "#", icon: LifeBuoy, label: "Help & Support", disabled: true },
 ];
+
+/** Which Help sub-item the current path corresponds to. */
+function helpTabFor(pathname: string): string | undefined {
+  if (pathname.startsWith("/dashboard/help/articles")) return "center";
+  if (pathname === "/dashboard/help/tickets/new") return "contact";
+  if (pathname.startsWith("/dashboard/help/tickets")) return "tickets";
+  if (pathname.startsWith("/dashboard/help/faqs")) return "faqs";
+  return undefined;
+}
 
 export function Sidebar({
   user,
@@ -130,6 +145,16 @@ export function Sidebar({
                 onClick={() => setOpen(false)}
               />
             ))}
+
+            <SidebarNavGroup
+              href="/dashboard/help"
+              icon={LifeBuoy}
+              label="Help & Support"
+              items={HELP_SUB_ITEMS}
+              sectionActive={pathname.startsWith("/dashboard/help")}
+              activeTab={helpTabFor(pathname)}
+              onNavigate={() => setOpen(false)}
+            />
           </nav>
 
           {/* Invite promo — mirrors the reference's sidebar CTA card */}

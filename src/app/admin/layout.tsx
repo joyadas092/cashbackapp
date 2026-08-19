@@ -6,6 +6,8 @@ const NAV_ITEMS = [
   { href: "/admin/stores", label: "Stores" },
   { href: "/admin/campaigns", label: "Cuelinks Campaigns" },
   { href: "/admin/referral", label: "Refer & Earn" },
+  { href: "/admin/support", label: "Support Tickets" },
+  { href: "/admin/help-articles", label: "Help Articles" },
   { href: "/admin/users", label: "Users" },
 ];
 
