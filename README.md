@@ -102,29 +102,87 @@ dynamic route `params` a `Promise`, so every `[slug]`-style page and route handl
 need updating. Deliberately deferred while this is a local, non-deployed scaffold.
 **Upgrade Next.js (and re-verify all dynamic routes) before deploying this publicly.**
 
-## Deploying to Railway
+## Railway deployment (live)
 
-`railway.json` is already configured: Nixpacks build (`npm run build`), then on deploy
-`npm run deploy:migrate && npm run start` (`prisma migrate deploy` runs before the server
-starts, and `start` binds to Railway's `$PORT`).
+**Deployed and running:** https://web-production-f9977.up.railway.app
 
-1. Create a new Railway project from this GitHub repo.
-2. Add a **Postgres** plugin — Railway sets `DATABASE_URL` automatically; reference it as
-   a variable on the app service if it isn't linked already.
-3. (Optional) Add a **Redis** plugin the same way for `REDIS_URL` — the app runs fine
-   without it (`src/lib/redis.ts` no-ops if unset).
-4. Set these variables on the app service:
-   - `AUTH_SECRET` — generate with `openssl rand -base64 32`, do not reuse the local dev
-     value committed nowhere but your local `.env`.
-   - `NEXTAUTH_URL` — your Railway-assigned public domain, e.g.
-     `https://cashbackapp-production.up.railway.app`.
-   - `CUELINKS_API_KEY`, `CUELINKS_CHANNEL_ID`, `CUELINKS_POSTBACK_SECRET` — optional;
-     leave unset to keep running in Cuelinks stub mode in production too.
-5. Deploy. The seed script (`npm run db:seed`) is **not** run automatically — it's demo
-   data, not meant for production. Run it manually via `railway run npm run db:seed` only
-   if you want the demo stores/users on this environment.
-6. Once you have the real domain, that's what belongs in the Cuelinks Global Postback
-   "Destination URL" field: `https://<your-domain>/api/webhooks/cuelinks`.
+| | |
+| --- | --- |
+| Railway project | `cashbackapp` (`026c6caa-8b9c-4f70-9b42-6849e9393dd1`) |
+| App service | `web` — GitHub source `joyadas092/cashbackapp`, branch `main` |
+| Database service | `Postgres` — reachable only on the private network (`postgres.railway.internal:5432`) |
+| Redis | not provisioned — `src/lib/redis.ts` no-ops without `REDIS_URL` |
+| Cuelinks | stub mode — no `CUELINKS_API_KEY` set in production |
+
+`railway.json` drives it: Nixpacks build (`npm run build`), then on deploy
+`npm run deploy:migrate && npm run start` — so `prisma migrate deploy` runs against the
+Railway database before the server binds to `$PORT`. The schema is migrated and the demo
+seed (10 stores, demo + admin users) has been applied, so the deployed site has data.
+
+### Deploys are currently CLI-triggered, not automatic
+
+The `web` service points at the GitHub repo, but Railway's GitHub App has **not** been
+authorized for `joyadas092/cashbackapp`, so pushing to `main` does not build anything —
+the API rejects a git-sourced deploy with `Repository "joyadas092/cashbackapp" not found
+or is not accessible`. Until that's connected, ship with:
+
+```bash
+git push origin main            # keep the repo current
+railway up --service web        # build + deploy the working tree
+```
+
+To switch to push-to-deploy: Railway dashboard → `web` service → Settings → Source →
+connect the GitHub repo, approving the Railway GitHub App for `joyadas092/cashbackapp`.
+After that, `git push origin main` is the whole deploy.
+
+### Build-time gotcha: nothing may touch the database during `next build`
+
+The Railway build container has no route to `postgres.railway.internal`. Any route or page
+Next decides to **statically prerender** runs its data fetch at build time and will fail
+the whole build with `Can't reach database server`. This already broke one deploy via
+`/api/categories`, a GET handler with no request input, which Next therefore prerendered.
+
+Rule: **any route handler or page that queries Prisma must be request-time.** Handlers that
+read `request`/`cookies()`/`headers()` are dynamic automatically; ones that don't need an
+explicit `export const dynamic = "force-dynamic"` (see
+`src/app/api/categories/route.ts`). Check `npm run build` output — every DB-backed route
+should be marked `ƒ (Dynamic)`, never `○ (Static)`.
+
+### Variables set on the `web` service
+
+| Variable | Value |
+| --- | --- |
+| `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` (service reference, resolves to the private endpoint) |
+| `AUTH_SECRET` | generated at deploy time; rotate from the Railway dashboard whenever you like |
+| `NEXTAUTH_URL` / `AUTH_URL` | `https://web-production-f9977.up.railway.app` |
+| `AUTH_TRUST_HOST` | `true` — NextAuth v5 requires this behind Railway's proxy |
+
+`CUELINKS_API_KEY`, `CUELINKS_CHANNEL_ID`, `CUELINKS_POSTBACK_SECRET` are deliberately
+**unset**, so production runs in Cuelinks stub mode. Before setting them, rotate the key —
+see the security note in the Cuelinks section above.
+
+### Cuelinks Global Postback destination
+
+Once the real Cuelinks credentials go in, this is the "Destination URL":
+
+```
+https://web-production-f9977.up.railway.app/api/webhooks/cuelinks
+```
+
+### Reaching the deployed database
+
+There is no public Postgres endpoint by design. To run a one-off script (a re-seed, a
+manual query) against it, create a temporary proxy, use it, and delete it again:
+
+```bash
+railway tcp-proxy create --port 5432 --service Postgres   # prints host:port
+DATABASE_URL=postgresql://postgres:<pw>@<host>:<port>/railway npx tsx prisma/seed.ts
+railway tcp-proxy delete <proxy-id> --service Postgres --yes
+railway tcp-proxy list --service Postgres                 # confirm it returns []
+```
+
+Always delete the proxy afterwards — while it exists the database is reachable from the
+public internet with nothing but the password in front of it.
 
 ## Environment variables
 
