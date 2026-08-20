@@ -125,11 +125,19 @@ export async function processCuelinksPostback(raw: RawPostbackParams): Promise<P
 
   const rawClickId = raw.click_id;
   const clickId = rawClickId?.startsWith("c_") ? rawClickId.slice(2) : rawClickId;
-  const merchantTransactionId = raw.merchant_transaction_id;
+  // Dedupe key. Cuelinks' own {transaction_id} is the stable unique id for a
+  // transaction and is what later status updates carry, so it is preferred.
+  // {transaction_reference_id} (the merchant's order id) is the fallback for
+  // postback configs that only send that — it identifies the same sale, but is
+  // the merchant's number rather than Cuelinks'.
+  const cuelinksTransactionId = raw.transaction_id ?? raw.merchant_transaction_id;
+  // Kept separately so the order id shown to users and admins is the one the
+  // shopper would recognise from the store.
+  const merchantOrderId = raw.merchant_transaction_id ?? raw.transaction_reference_id ?? null;
   const saleAmount = raw.transaction_amount != null ? Number(raw.transaction_amount) : NaN;
   const commissionAmount = raw.commission_amount != null ? Number(raw.commission_amount) : NaN;
 
-  if (!clickId || !merchantTransactionId || Number.isNaN(saleAmount) || Number.isNaN(commissionAmount)) {
+  if (!clickId || !cuelinksTransactionId || Number.isNaN(saleAmount) || Number.isNaN(commissionAmount)) {
     await logPostback({
       rawParams: raw,
       tokenValid: true,
@@ -159,7 +167,8 @@ export async function processCuelinksPostback(raw: RawPostbackParams): Promise<P
     const result = await prisma.$transaction(async (tx) => {
       return applyTransactionStatus(tx, {
         click,
-        merchantTransactionId: merchantTransactionId!,
+        cuelinksTransactionId: cuelinksTransactionId!,
+        merchantOrderId,
         saleAmount,
         commissionAmount,
         status,
@@ -202,17 +211,26 @@ async function applyTransactionStatus(
   tx: TxClient,
   params: {
     click: ClickWithProfitLink;
-    merchantTransactionId: string;
+    cuelinksTransactionId: string;
+    merchantOrderId: string | null;
     saleAmount: number;
     commissionAmount: number;
     status: TransactionStatus;
     rawPayload: Record<string, unknown>;
   }
 ): Promise<{ transactionId: string; processResult: string }> {
-  const { click, merchantTransactionId, saleAmount, commissionAmount, status, rawPayload } = params;
+  const {
+    click,
+    cuelinksTransactionId,
+    merchantOrderId,
+    saleAmount,
+    commissionAmount,
+    status,
+    rawPayload,
+  } = params;
 
   let transaction = await tx.transaction.findUnique({
-    where: { storeId_cuelinksTransactionId: { storeId: click.storeId, cuelinksTransactionId: merchantTransactionId } },
+    where: { storeId_cuelinksTransactionId: { storeId: click.storeId, cuelinksTransactionId } },
   });
 
   if (!transaction) {
@@ -238,7 +256,8 @@ async function applyTransactionStatus(
         clickId: click.id,
         campaignId: click.campaignId,
         cashbackRuleId: rule.id,
-        cuelinksTransactionId: merchantTransactionId,
+        cuelinksTransactionId,
+        orderId: merchantOrderId,
         saleAmount,
         commissionAmount,
         customerAmount: split.customer,
