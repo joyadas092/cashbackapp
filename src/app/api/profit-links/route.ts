@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth";
 import { createProfitLinkSchema } from "@/lib/validation/schemas";
 import { validateMerchantUrl } from "@/lib/security/urlValidator";
 import { generateShortCode } from "@/lib/shortcode";
+import { getSetting } from "@/lib/settings";
 
 const PAGE_SIZE = 10;
 
@@ -12,6 +13,15 @@ export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Share & Earn can be switched off platform-wide. Checked server-side so the
+  // feature is genuinely off, not just hidden.
+  if (!(await getSetting("affiliateEnabled"))) {
+    return NextResponse.json(
+      { error: "Share & Earn is currently unavailable." },
+      { status: 403 }
+    );
   }
 
   const body = await req.json().catch(() => null);

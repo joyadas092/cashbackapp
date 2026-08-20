@@ -3,6 +3,7 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { generatePayoutReference } from "@/lib/support";
+import { getSettings } from "@/lib/settings";
 
 /**
  * Withdrawal requests.
@@ -18,19 +19,11 @@ import { generatePayoutReference } from "@/lib/support";
  * means the database decides, and the loser gets zero rows back.
  */
 
-const DEFAULT_MIN_WITHDRAWAL = 100;
-
 const requestSchema = z.object({
   amount: z.coerce.number().positive().max(9_999_999),
   method: z.enum(["UPI", "BANK_TRANSFER", "PAYTM", "AMAZON_PAY"]),
   destination: z.string().trim().min(3).max(120),
 });
-
-async function minWithdrawal(): Promise<number> {
-  const setting = await prisma.setting.findUnique({ where: { key: "min_withdrawal_amount" } });
-  const value = Number(setting?.value ?? DEFAULT_MIN_WITHDRAWAL);
-  return Number.isFinite(value) && value > 0 ? value : DEFAULT_MIN_WITHDRAWAL;
-}
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -55,10 +48,27 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Amount can have at most 2 decimal places" }, { status: 400 });
   }
 
-  const minimum = await minWithdrawal();
-  if (amount < minimum) {
+  const settings = await getSettings();
+
+  if (amount < settings.minWithdrawalAmount) {
     return NextResponse.json(
-      { error: `Minimum withdrawal is ₹${minimum}.` },
+      { error: `Minimum withdrawal is ₹${settings.minWithdrawalAmount}.` },
+      { status: 400 }
+    );
+  }
+
+  if (amount > settings.maxWithdrawalAmount) {
+    return NextResponse.json(
+      { error: `Maximum withdrawal is ₹${settings.maxWithdrawalAmount} per request.` },
+      { status: 400 }
+    );
+  }
+
+  // An admin can turn a payout method off; the endpoint refuses it rather than
+  // relying on the form no longer offering it.
+  if (!settings.payoutMethods.includes(method)) {
+    return NextResponse.json(
+      { error: "That payout method isn't available right now." },
       { status: 400 }
     );
   }

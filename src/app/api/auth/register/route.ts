@@ -3,8 +3,18 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
 import { registerSchema } from "@/lib/validation/schemas";
 import { generateUniqueReferralCode } from "@/lib/referralCode";
+import { getSetting } from "@/lib/settings";
 
 export async function POST(req: NextRequest) {
+  // Enforced here, not only by hiding the form — otherwise "registration off"
+  // would just mean "registration off unless you POST directly".
+  if (!(await getSetting("registrationEnabled"))) {
+    return NextResponse.json(
+      { error: "New sign-ups are closed at the moment. Please check back later." },
+      { status: 403 }
+    );
+  }
+
   const body = await req.json().catch(() => null);
   const parsed = registerSchema.safeParse(body);
 
@@ -32,7 +42,13 @@ export async function POST(req: NextRequest) {
   // silently ignored rather than failing registration — referral capture is
   // a bonus, not a hard registration requirement (spec section 4: prevent
   // self-referral and manipulation, don't block signup over it).
-  const submittedCode = parsed.data.referralCode ?? req.cookies.get("referral_code")?.value;
+  // Referral capture can be switched off platform-wide; when it is, a code in
+  // the request or cookie is simply ignored rather than creating a referral
+  // that would never pay out.
+  const referralEnabled = await getSetting("referralEnabled");
+  const submittedCode = referralEnabled
+    ? (parsed.data.referralCode ?? req.cookies.get("referral_code")?.value)
+    : undefined;
   const referrer = submittedCode
     ? await prisma.user.findUnique({ where: { referralCode: submittedCode.toUpperCase() } })
     : null;

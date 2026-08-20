@@ -10,6 +10,7 @@ import {
   BookOpen,
   ExternalLink,
   FileText,
+  Gift,
   Image as ImageIcon,
   LayoutDashboard,
   LifeBuoy,
@@ -82,8 +83,9 @@ export const ADMIN_NAV: AdminNavGroup[] = [
   {
     title: "System",
     items: [
+      { href: "/admin/settings", icon: Settings, label: "Settings" },
       { href: "/admin/campaigns", icon: Radar, label: "Cuelinks Campaigns" },
-      { href: "/admin/referral", icon: Settings, label: "Settings" },
+      { href: "/admin/referral", icon: Gift, label: "Refer & Earn Rules" },
       { href: "#", icon: ShieldCheck, label: "Roles & Permissions", disabled: true },
       { href: "/admin/activity-logs", icon: Activity, label: "Activity Logs" },
     ],
