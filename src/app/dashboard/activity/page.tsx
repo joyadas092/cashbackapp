@@ -28,11 +28,13 @@ import {
 import { StoreLogo } from "@/components/store/StoreLogo";
 import { formatInrExact } from "@/lib/utils";
 import { siteUrl } from "@/lib/siteUrl";
+import { shortClickId } from "@/lib/clickId";
 import { LocalTime } from "@/components/shared/LocalTime";
 import { DateRangeFilter } from "@/components/shared/DateRangeFilter";
 import { dateRangeToParams, dateRangeWhere, parseDateRange } from "@/lib/dateRangeFilter";
 
 const CHART_DAYS = 30;
+
 const PAGE_SIZE = 20;
 
 function startOfMonth(offset: number): Date {
@@ -260,6 +262,7 @@ export default async function ActivityPage({
     columns = [
       { key: "date", label: "Date & Time" },
       { key: "store", label: "Store" },
+      { key: "clickId", label: "Click ID" },
       { key: "type", label: "Type" },
       { key: "status", label: "Status" },
     ];
@@ -285,12 +288,20 @@ export default async function ActivityPage({
       cells: {
         date: { iso: click.createdAt.toISOString(), tone: "muted", nowrap: true },
         store: { store: click.store },
+        // The click id is the attribution key (we send Cuelinks subid=c_<id>),
+        // so it is the reference someone needs when raising a missing-cashback
+        // claim. Shown short: the full cuid is unreadable and the prefix is
+        // unique enough to pick from a list.
+        clickId: { text: shortClickId(click.id), tone: "mono", nowrap: true },
         type: {
-          text: click.clickType === "DIRECT_CASHBACK" ? "Cashback trip" : "Store visit",
+          text: click.clickType === "DIRECT_CASHBACK" ? "Shopping (cashback)" : "Store visit",
           tone: "muted",
         },
         status: {
-          badge: { label: click.status, tone: STATUS_TONES[click.status] ?? "bg-slate-100" },
+          badge: {
+            label: click.status === "TRACKED" ? "Recorded" : "Failed",
+            tone: STATUS_TONES[click.status] ?? "bg-slate-100",
+          },
         },
       },
     }));
@@ -342,6 +353,7 @@ export default async function ActivityPage({
     columns = [
       { key: "date", label: "Date & Time" },
       { key: "store", label: "Store" },
+      { key: "clickId", label: "Click ID" },
       { key: "link", label: "Your Link" },
       { key: "clicks", label: "Clicks on this link", align: "right" },
       { key: "status", label: "Status" },
@@ -390,12 +402,16 @@ export default async function ActivityPage({
       cells: {
         date: { iso: click.createdAt.toISOString(), tone: "muted", nowrap: true },
         store: { store: click.store },
+        clickId: { text: shortClickId(click.id), tone: "mono", nowrap: true },
         link: click.profitLink
           ? { link: { href: `${base}/p/${click.profitLink.code}` } }
           : { text: "—" },
         clicks: { text: String(clicksByLink.get(click.profitLinkId) ?? 0), nowrap: true },
         status: {
-          badge: { label: click.status, tone: STATUS_TONES[click.status] ?? "bg-slate-100" },
+          badge: {
+            label: click.status === "TRACKED" ? "Recorded" : "Failed",
+            tone: STATUS_TONES[click.status] ?? "bg-slate-100",
+          },
         },
       },
     }));
@@ -665,36 +681,39 @@ export default async function ActivityPage({
   }
 
   return (
-    <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6">
+    <div className="mx-auto max-w-[1400px] px-3.5 py-5 sm:px-6 sm:py-6">
       <header>
-        <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">My Activity</h1>
-        <p className="mt-1 text-slate-500">
+        <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">
+          My Activity
+        </h1>
+        <p className="mt-1 text-sm text-slate-500 sm:text-base">
           Track your clicks, transactions and earnings in detail — from your own shopping, the
           links you share, and the friends you refer.
         </p>
       </header>
 
       {/* KPI strip */}
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+      <div className="mt-5 grid grid-cols-2 gap-2.5 sm:mt-6 sm:gap-4 lg:grid-cols-3 xl:grid-cols-5">
         {stats.map((stat) => (
           <div
             key={stat.label}
-            className="rounded-xl2 border border-slate-200 bg-white p-4 shadow-card"
+            className="rounded-xl2 border border-slate-200 bg-white p-3 shadow-card sm:p-4"
           >
-            <div className="flex items-start gap-3">
+            <div className="flex items-start gap-2.5 sm:gap-3">
               <span
-                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${stat.tone}`}
+                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full sm:h-11 sm:w-11 ${stat.tone}`}
               >
-                <stat.icon size={20} strokeWidth={1.75} />
+                <stat.icon size={18} strokeWidth={1.75} className="sm:hidden" />
+                <stat.icon size={20} strokeWidth={1.75} className="hidden sm:block" />
               </span>
               <div className="min-w-0">
-                <div className="text-sm text-slate-500">{stat.label}</div>
-                <div className="mt-0.5 truncate text-xl font-extrabold text-slate-900">
+                <div className="text-xs text-slate-500 sm:text-sm">{stat.label}</div>
+                <div className="mt-0.5 truncate text-lg font-extrabold text-slate-900 sm:text-xl">
                   {stat.value}
                 </div>
               </div>
             </div>
-            <div className="mt-3 flex items-center gap-2 text-xs">
+            <div className="mt-2.5 flex flex-wrap items-center gap-1.5 text-[11px] sm:mt-3 sm:gap-2 sm:text-xs">
               <span className="text-slate-400">{stat.period}</span>
               {stat.delta !== null && (
                 <span
@@ -723,7 +742,7 @@ export default async function ActivityPage({
         <ActivityTabs active={tab} />
 
         {tab === "overview" && overview ? (
-          <div className="space-y-6 p-5">
+          <div className="space-y-6 p-3.5 sm:p-5">
             <div className="grid gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
               {/* Recent transactions */}
               <section>
@@ -742,7 +761,63 @@ export default async function ActivityPage({
                     No transactions yet. Start a shopping trip from any store page.
                   </p>
                 ) : (
-                  <div className="overflow-x-auto rounded-xl border border-slate-200">
+                  <>
+                  {/* Phones get cards. A six-column table at min-w-640 forces a
+                      sideways scroll on a 390px screen, which is what made this
+                      view unusable on mobile. */}
+                  <ul className="space-y-2.5 sm:hidden">
+                    {overview.recent.map((tx) => (
+                      <li
+                        key={tx.id}
+                        className="rounded-xl border border-slate-200 p-3.5"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <Link
+                            href={`/stores/${tx.store.slug}`}
+                            className="flex min-w-0 items-center gap-2 font-semibold text-slate-800"
+                          >
+                            <span className="shrink-0 rounded-lg ring-1 ring-slate-200">
+                              <StoreLogo
+                                src={tx.store.logoUrl}
+                                alt={tx.store.name}
+                                size={26}
+                                fallbackSlug={tx.store.slug}
+                              />
+                            </span>
+                            <span className="truncate">{tx.store.name}</span>
+                          </Link>
+                          <span
+                            className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                              STATUS_TONES[tx.status] ?? "bg-slate-100 text-slate-600"
+                            }`}
+                          >
+                            {tx.status}
+                          </span>
+                        </div>
+
+                        <div className="mt-2.5 flex items-end justify-between gap-3">
+                          <span className="min-w-0">
+                            <span className="block text-xs text-slate-400">
+                              <LocalTime value={tx.date} />
+                            </span>
+                            <span className="mt-0.5 block truncate font-mono text-[11px] text-slate-500">
+                              {tx.orderId}
+                            </span>
+                          </span>
+                          <span className="shrink-0 text-right">
+                            <span className="block text-xs text-slate-400">
+                              {formatInrExact(tx.amount)}
+                            </span>
+                            <span className="block text-sm font-bold text-cashlime-700">
+                              +{formatInrExact(tx.earnings)}
+                            </span>
+                          </span>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <div className="hidden overflow-x-auto rounded-xl border border-slate-200 sm:block">
                     <table className="w-full min-w-[640px] text-left text-sm">
                       <thead className="text-xs uppercase tracking-wide text-slate-400">
                         <tr className="border-b border-slate-100">
@@ -799,6 +874,7 @@ export default async function ActivityPage({
                       </tbody>
                     </table>
                   </div>
+                  </>
                 )}
               </section>
 
@@ -822,7 +898,11 @@ export default async function ActivityPage({
                         <tr className="border-b border-slate-100">
                           <th className="px-4 py-2.5 font-medium">Store</th>
                           <th className="px-4 py-2.5 text-right font-medium">Earnings</th>
-                          <th className="px-4 py-2.5 text-right font-medium">Clicks</th>
+                          {/* Clicks is the least useful of the three on a
+                              narrow screen, so it is what gives way. */}
+                          <th className="hidden px-4 py-2.5 text-right font-medium sm:table-cell">
+                            Clicks
+                          </th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
@@ -831,7 +911,7 @@ export default async function ActivityPage({
                             <td className="px-4 py-2.5">
                               <Link
                                 href={`/stores/${store.slug}`}
-                                className="flex items-center gap-2 font-medium text-slate-800 hover:text-violet-700"
+                                className="flex min-w-0 items-center gap-2 font-medium text-slate-800 hover:text-violet-700"
                               >
                                 <span className="shrink-0 rounded-lg ring-1 ring-slate-200">
                                   <StoreLogo
@@ -841,13 +921,13 @@ export default async function ActivityPage({
                                     fallbackSlug={store.slug}
                                   />
                                 </span>
-                                {store.name}
+                                <span className="truncate">{store.name}</span>
                               </Link>
                             </td>
                             <td className="whitespace-nowrap px-4 py-2.5 text-right font-semibold text-cashlime-700">
                               {formatInrExact(store.earnings)}
                             </td>
-                            <td className="px-4 py-2.5 text-right text-slate-600">
+                            <td className="hidden px-4 py-2.5 text-right text-slate-600 sm:table-cell">
                               {store.clicks}
                             </td>
                           </tr>

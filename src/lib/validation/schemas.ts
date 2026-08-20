@@ -199,3 +199,31 @@ export const profileUpdateSchema = z.object({
   notificationPrefs: z.record(z.boolean()).optional(),
 });
 export type ProfileUpdateInput = z.infer<typeof profileUpdateSchema>;
+
+/**
+ * A missing-cashback claim.
+ *
+ * The click id is required and is the point of the whole form: it is what
+ * Cuelinks attribution is keyed on, so a claim without one cannot be chased.
+ * Ownership of that click is checked in the route against the session — a
+ * schema can only say the field is present, not that it is yours.
+ */
+export const cashbackClaimSchema = z.object({
+  orderType: z.enum(["OWN_ORDER", "AFFILIATE_ORDER"]),
+  clickId: z.string().min(1, "Choose the click this order came from"),
+  orderId: z
+    .string()
+    .trim()
+    .min(3, "Enter the order ID from the store")
+    .max(100),
+  orderAmount: z.coerce
+    .number()
+    .positive("Enter the order amount")
+    .max(10_000_000),
+  message: z
+    .string()
+    .trim()
+    .min(10, "Tell us briefly what happened (at least 10 characters)")
+    .max(2000),
+});
+export type CashbackClaimInput = z.infer<typeof cashbackClaimSchema>;

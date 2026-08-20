@@ -94,6 +94,26 @@ enum TicketStatus {
   @@map("ticket_status")
 }
 
+enum ClaimStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  /// Raised with the merchant/network; waiting on them, not on us.
+  ESCALATED
+  APPROVED
+  REJECTED
+
+  @@map("claim_status")
+}
+
+/// Which kind of order a claim is about. Mirrors the two ways a user earns:
+/// their own shopping, and a purchase someone made through a link they shared.
+enum ClaimOrderType {
+  OWN_ORDER
+  AFFILIATE_ORDER
+
+  @@map("claim_order_type")
+}
+
 enum TicketPriority {
   LOW
   NORMAL
@@ -184,11 +204,12 @@ model User {
   walletTransactions WalletTransaction[]
   auditLogs          AuditLog[]
   profitLinks        ProfitLink[]
-  referralsMade      Referral[]          @relation("ReferrerOf")
-  referredBy         Referral?           @relation("ReferredBy")
+  referralsMade      Referral[]             @relation("ReferrerOf")
+  referredBy         Referral?              @relation("ReferredBy")
   favorites          StoreFavorite[]
   withdrawals        WithdrawalRequest[]
   supportTickets     SupportTicket[]
+  cashbackClaims     CashbackClaim[]
   supportMessages    SupportTicketMessage[]
   cmsPagesEdited     CmsPage[]              @relation("CmsPageEditor")
 
@@ -297,13 +318,13 @@ model Store {
   // Cuelinks exposes one flat payout per campaign (Flipkart: 6% "Per Sale(%)")
   // and no per-category rates, no coupons, and no payment timelines. Everything
   // below is therefore ours to maintain, not something a sync can fill in.
-  tagline        String? // one-liner under the store name
-  previousRate   Decimal? @map("previous_rate") @db.Decimal(5, 2) // powers the "Was 6%" chip
-  visitTime      String?  @map("visit_time") // e.g. "7 Days"
-  trackingTime   String?  @map("tracking_time") // e.g. "24 - 48 Hours"
-  paymentTime    String?  @map("payment_time") // e.g. "60 - 90 Days"
-  storePolicies  String?  @map("store_policies") // "Store Policies" tab body
-  importantTips  String[] @default([]) @map("important_tips")
+  tagline       String? // one-liner under the store name
+  previousRate  Decimal? @map("previous_rate") @db.Decimal(5, 2) // powers the "Was 6%" chip
+  visitTime     String?  @map("visit_time") // e.g. "7 Days"
+  trackingTime  String?  @map("tracking_time") // e.g. "24 - 48 Hours"
+  paymentTime   String?  @map("payment_time") // e.g. "60 - 90 Days"
+  storePolicies String?  @map("store_policies") // "Store Policies" tab body
+  importantTips String[] @default([]) @map("important_tips")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -317,6 +338,7 @@ model Store {
   categoryRates StoreCashbackRate[]
   offers        StoreOffer[]
   favorites     StoreFavorite[]
+  claims        CashbackClaim[]
 
   @@index([categoryId])
   @@index([status, featured, ranking])
@@ -425,11 +447,12 @@ model Click {
   profitLinkId String?     @map("profit_link_id")
   createdAt    DateTime    @default(now()) @map("created_at")
 
-  user         User?         @relation(fields: [userId], references: [id])
-  store        Store         @relation(fields: [storeId], references: [id])
-  campaign     Campaign?     @relation(fields: [campaignId], references: [id])
-  profitLink   ProfitLink?   @relation(fields: [profitLinkId], references: [id])
+  user         User?           @relation(fields: [userId], references: [id])
+  store        Store           @relation(fields: [storeId], references: [id])
+  campaign     Campaign?       @relation(fields: [campaignId], references: [id])
+  profitLink   ProfitLink?     @relation(fields: [profitLinkId], references: [id])
   transactions Transaction[]
+  claims       CashbackClaim[]
 
   @@index([userId])
   @@index([storeId])
@@ -513,8 +536,8 @@ model CmsPage {
   seoTitle       String? @map("seo_title")
   seoDescription String? @map("seo_description")
   /// Published pages appear in the footer in this order.
-  showInFooter Boolean @default(false) @map("show_in_footer")
-  sortOrder    Int     @default(0) @map("sort_order")
+  showInFooter   Boolean @default(false) @map("show_in_footer")
+  sortOrder      Int     @default(0) @map("sort_order")
 
   /// Who last saved it. Null once that admin's account is removed — the page
   /// outlives the person who wrote it.
@@ -531,15 +554,15 @@ model CmsPage {
 }
 
 model WithdrawalRequest {
-  id String @id @default(cuid())
+  id          String           @id @default(cuid())
   /// Human-facing reference, e.g. "PO-48210". Generated in application code
   /// (see generatePayoutReference) rather than defaulted to a cuid, and random
   /// rather than sequential so it doesn't leak payout volume or let one user
   /// guess another's.
-  reference String @unique
-  userId    String @map("user_id")
-  amount Decimal          @db.Decimal(12, 2)
-  method WithdrawalMethod
+  reference   String           @unique
+  userId      String           @map("user_id")
+  amount      Decimal          @db.Decimal(12, 2)
+  method      WithdrawalMethod
   /// Where the money goes — a UPI id, or a masked account reference. Never a
   /// full bank account number.
   destination String
@@ -566,21 +589,21 @@ model WithdrawalRequest {
 /// both are a title plus a body that admins maintain, and splitting them into
 /// two models would duplicate every field and every screen for no gain.
 model HelpArticle {
-  id        String  @id @default(cuid())
-  slug      String  @unique
-  title     String
-  excerpt   String?
-  body      String
-  category  String  @default("General")
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  excerpt     String?
+  body        String
+  category    String   @default("General")
   /// Short answers shown in the FAQs view rather than the article list.
-  isFaq     Boolean @default(false) @map("is_faq")
-  isPublished Boolean @default(true) @map("is_published")
+  isFaq       Boolean  @default(false) @map("is_faq")
+  isPublished Boolean  @default(true) @map("is_published")
   /// Surfaced in "Popular Help Topics" — set by admins, not inferred.
-  isPopular Boolean  @default(false) @map("is_popular")
-  sortOrder Int      @default(0) @map("sort_order")
-  viewCount Int      @default(0) @map("view_count")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  isPopular   Boolean  @default(false) @map("is_popular")
+  sortOrder   Int      @default(0) @map("sort_order")
+  viewCount   Int      @default(0) @map("view_count")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
   @@index([isPublished, isFaq, sortOrder])
   @@index([category])
@@ -588,19 +611,19 @@ model HelpArticle {
 }
 
 model SupportTicket {
-  id String @id @default(cuid())
+  id            String         @id @default(cuid())
   /// Human-facing reference shown to the user, e.g. "TKT-48210".
-  ticketNumber String         @unique @map("ticket_number")
-  userId       String         @map("user_id")
-  subject      String
-  category     String         @default("General")
-  status       TicketStatus   @default(OPEN)
-  priority     TicketPriority @default(NORMAL)
+  ticketNumber  String         @unique @map("ticket_number")
+  userId        String         @map("user_id")
+  subject       String
+  category      String         @default("General")
+  status        TicketStatus   @default(OPEN)
+  priority      TicketPriority @default(NORMAL)
   /// Set when a ticket is closed so resolution time is measurable later.
-  resolvedAt   DateTime?      @map("resolved_at")
-  lastRepliedAt DateTime?     @map("last_replied_at")
-  createdAt    DateTime       @default(now()) @map("created_at")
-  updatedAt    DateTime       @updatedAt @map("updated_at")
+  resolvedAt    DateTime?      @map("resolved_at")
+  lastRepliedAt DateTime?      @map("last_replied_at")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
 
   user     User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
   messages SupportTicketMessage[]
@@ -610,11 +633,76 @@ model SupportTicket {
   @@map("support_tickets")
 }
 
+/// A missing-cashback claim.
+///
+/// Anchored to a Click rather than to free text: the click id is what Cuelinks
+/// attribution is keyed on (subid = c_<clickId>), so a claim that names one can
+/// actually be chased with the network. The user picks the click from their own
+/// history, which is also why claims can only ever reference their own clicks.
+model CashbackClaim {
+  id             String         @id @default(cuid())
+  /// Human-facing reference shown to the user, e.g. "CLM-48210".
+  claimNumber    String         @unique @map("claim_number")
+  userId         String         @map("user_id")
+  orderType      ClaimOrderType @map("order_type")
+  /// The click being claimed against. Nullable so a claim survives if the click
+  /// is ever pruned; claimedClickId keeps the reference either way.
+  clickId        String?        @map("click_id")
+  /// Denormalised copy of the click id as it was at submission time.
+  claimedClickId String         @map("claimed_click_id")
+  storeId        String         @map("store_id")
+  /// The date the user says they shopped, as picked from the calendar.
+  clickedAt      DateTime       @map("clicked_at")
+  orderId        String         @map("order_id")
+  orderAmount    Decimal        @map("order_amount") @db.Decimal(12, 2)
+  /// Uploaded proof. Stored as a URL so the storage backend can change.
+  screenshotUrl  String?        @map("screenshot_url")
+  message        String
+  status         ClaimStatus    @default(SUBMITTED)
+  /// Staff-only. Never rendered in the user's view.
+  adminNote      String?        @map("admin_note")
+  resolvedAt     DateTime?      @map("resolved_at")
+  resolvedById   String?        @map("resolved_by_id")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  click      Click?           @relation(fields: [clickId], references: [id], onDelete: SetNull)
+  store      Store            @relation(fields: [storeId], references: [id])
+  attachment ClaimAttachment?
+
+  /// One open claim per order reference per user — resubmitting the same order
+  /// should update the conversation, not create a second queue entry.
+  @@unique([userId, orderId])
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+  @@map("cashback_claims")
+}
+
+/// Proof uploaded with a claim.
+///
+/// Held in the database rather than on disk because Railway's filesystem is
+/// ephemeral — a redeploy would silently destroy the evidence a claim rests on.
+/// A separate table so listing claims never drags the bytes along.
+model ClaimAttachment {
+  id        String   @id @default(cuid())
+  claimId   String   @unique @map("claim_id")
+  mimeType  String   @map("mime_type")
+  /// Size in bytes, kept so a listing can show it without reading the blob.
+  sizeBytes Int      @map("size_bytes")
+  data      Bytes
+  createdAt DateTime @default(now()) @map("created_at")
+
+  claim CashbackClaim @relation(fields: [claimId], references: [id], onDelete: Cascade)
+
+  @@map("claim_attachments")
+}
+
 model SupportTicketMessage {
-  id       String @id @default(cuid())
-  ticketId String @map("ticket_id")
+  id           String   @id @default(cuid())
+  ticketId     String   @map("ticket_id")
   /// Null once an author's account is deleted — the thread survives the user.
-  authorUserId String? @map("author_user_id")
+  authorUserId String?  @map("author_user_id")
   body         String
   /// Whether this came from support rather than the ticket's owner. Stored
   /// rather than derived from the author's current role, so a user who is later

@@ -41,6 +41,7 @@ export function accountNavLinks(): NavLink[] {
     { href: "/dashboard/activity", label: "My Activity" },
     { href: "/dashboard/wallet", label: "My Wallet" },
     { href: "/dashboard/orders", label: "Orders" },
+    { href: "/dashboard/claims", label: "Cashback Claims" },
     { href: "/share-earn", label: "Profit Links" },
     { href: "/dashboard/refer", label: "Refer & Earn" },
     { href: "/dashboard/profile", label: "Profile & Settings" },

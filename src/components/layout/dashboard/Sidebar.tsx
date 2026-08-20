@@ -12,6 +12,7 @@ import {
   type LucideIcon,
   Menu,
   Package,
+  ReceiptText,
   Settings,
   Sparkles,
   Store,
@@ -51,6 +52,7 @@ const BROWSE_ITEMS: Array<{
 const NAV_ITEMS: Array<{ href: string; icon: LucideIcon; label: string; disabled?: boolean }> = [
   { href: "/dashboard/wallet", icon: Wallet, label: "Wallet" },
   { href: "/dashboard/orders", icon: Package, label: "Orders" },
+  { href: "/dashboard/claims", icon: ReceiptText, label: "Cashback Claims" },
   { href: "/share-earn", icon: Link2, label: "Profit Links" },
   { href: "/dashboard/refer", icon: Users, label: "Refer & Earn" },
 ];

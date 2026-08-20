@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ClickType } from "@prisma/client";
 import { requireAdminSession } from "@/lib/adminAuth";
 import { prisma } from "@/lib/db";
+import { shortClickId } from "@/lib/clickId";
 import { DateRangeFilter } from "@/components/shared/DateRangeFilter";
 import {
   dateRangeToParams,
@@ -151,10 +152,11 @@ export default async function AdminClicksPage({
         {clicks.length === 0 ? (
           <AdminEmpty title="No clicks recorded" />
         ) : (
-          <AdminTableWrap minWidth={860}>
+          <AdminTableWrap minWidth={980}>
             <thead>
               <tr className="border-b border-slate-100">
                 <AdminTh>Date</AdminTh>
+                <AdminTh>Click ID</AdminTh>
                 <AdminTh>Store</AdminTh>
                 <AdminTh>Type</AdminTh>
                 <AdminTh>Who</AdminTh>
@@ -174,6 +176,15 @@ export default async function AdminClicksPage({
                   <tr key={click.id} className="hover:bg-slate-50/60">
                     <td className="whitespace-nowrap px-5 py-3 text-slate-500">
                       <LocalTime value={click.createdAt.toISOString()} />
+                    </td>
+                    {/* The full cuid on hover: it is the attribution key sent to
+                        Cuelinks as subid=c_<id>, so support needs to copy it
+                        exactly when chasing a missing transaction. */}
+                    <td
+                      className="whitespace-nowrap px-5 py-3 font-mono text-xs text-slate-600"
+                      title={click.id}
+                    >
+                      {shortClickId(click.id)}
                     </td>
                     <td className="px-5 py-3">
                       <span className="flex items-center gap-2 text-slate-800">

@@ -15,7 +15,7 @@ export async function Header() {
   const wallet = session?.user
     ? await prisma.wallet.findUnique({
         where: { userId: session.user.id },
-        select: { availableBalance: true, pendingCashback: true },
+        select: { availableBalance: true },
       })
     : null;
 
@@ -33,15 +33,7 @@ export async function Header() {
           accountLinks={accountNavLinks()}
           isLoggedIn={Boolean(session?.user)}
           isAdmin={session?.user?.role === "ADMIN"}
-          user={
-            session?.user
-              ? {
-                  name: session.user.name ?? "there",
-                  availableBalance: Number(wallet?.availableBalance ?? 0),
-                  pendingBalance: Number(wallet?.pendingCashback ?? 0),
-                }
-              : null
-          }
+          user={session?.user ? { name: session.user.name ?? "there" } : null}
           onSignOut={handleSignOut}
         />
 

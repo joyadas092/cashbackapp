@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LogOut, Menu, Search, X } from "lucide-react";
 import { Avatar } from "@/components/shared/Avatar";
-import { cn, formatInrExact } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
 export interface MobileMenuLink {
   href: string;
@@ -15,17 +15,16 @@ export interface MobileMenuLink {
 
 export interface MobileMenuUser {
   name: string;
-  availableBalance: number;
-  pendingBalance: number;
 }
 
 /**
  * Slide-over navigation for screens below lg, where HeaderNav is hidden.
  *
  * This is the only navigation a signed-in visitor has on a phone, on both the
- * marketing pages and inside the dashboard, so it carries everything: the
- * wallet balance, the site sections, and the account's own pages. Splitting
- * browse and account links into labelled groups keeps a long list scannable.
+ * marketing pages and inside the dashboard, so it carries both the site's
+ * sections and the account's own pages, in labelled groups so a long list stays
+ * scannable. The balance is deliberately not repeated here — it is already in
+ * the header chip and on the wallet page, and it crowded a narrow panel.
  *
  * It also carries search, since the header's search field only appears from md
  * up — without it there is no way to search from a phone except by navigating
@@ -117,10 +116,9 @@ export function MobileMenu({
           />
 
           <div className="absolute inset-y-0 left-0 flex w-[85%] max-w-xs flex-col bg-navy-950 shadow-2xl">
-            {/* Identity and balance first: on a cashback app "what am I owed"
-                is the question the menu is most often opened to answer. */}
+            {/* Who you are signed in as, and a way straight to the profile. */}
             {isLoggedIn && user ? (
-              <div className="border-b border-white/10 bg-violet-600/15 px-4 py-4">
+              <div className="border-b border-white/10 px-4 py-4">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex min-w-0 items-center gap-2.5">
                     <Avatar name={user.name} size={38} />
@@ -147,24 +145,6 @@ export function MobileMenu({
                   </button>
                 </div>
 
-                <Link
-                  href="/dashboard/wallet"
-                  onClick={() => setOpen(false)}
-                  className="mt-3 grid grid-cols-2 gap-2 rounded-xl bg-white/10 p-3"
-                >
-                  <span>
-                    <span className="block text-[11px] text-white/50">Available</span>
-                    <span className="block text-sm font-bold text-cashlime-400">
-                      {formatInrExact(user.availableBalance)}
-                    </span>
-                  </span>
-                  <span>
-                    <span className="block text-[11px] text-white/50">Pending</span>
-                    <span className="block text-sm font-bold text-amber-300">
-                      {formatInrExact(user.pendingBalance)}
-                    </span>
-                  </span>
-                </Link>
               </div>
             ) : (
               <div className="flex items-center justify-between border-b border-white/10 px-4 py-4">
