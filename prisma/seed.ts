@@ -835,6 +835,107 @@ A person can only be referred once. Referral earnings follow the same confirmati
     });
   }
 
+  console.log("Seeding CMS pages...");
+  const CMS_PAGES: Array<{
+    slug: string;
+    title: string;
+    excerpt: string;
+    body: string;
+    type: "STATIC" | "CUSTOM" | "LANDING";
+    sortOrder: number;
+  }> = [
+    {
+      slug: "about-us",
+      title: "About Us",
+      excerpt: "About our platform and mission",
+      type: "STATIC",
+      sortOrder: 1,
+      body: `CashbackApp exists to give shoppers back a share of what stores already spend on marketing.
+
+When you start a shopping trip from here, the store pays us a commission for sending you. We keep a small part to run the platform and pass the rest to you as cashback.
+
+The same applies when you share a product link or refer a friend: the money comes out of the store's marketing budget, never out of the buyer's pocket. Prices are identical to going direct.`,
+    },
+    {
+      slug: "terms-conditions",
+      title: "Terms & Conditions",
+      excerpt: "The rules for using CashbackApp",
+      type: "STATIC",
+      sortOrder: 2,
+      body: `By creating an account you agree to use CashbackApp honestly and for your own shopping.
+
+Cashback is earned only on orders we can track. Starting a trip from here and completing the purchase in the same session is what makes tracking work; opening the store again from an advert or another cashback site in between will usually give the credit to that other source.
+
+Cashback is confirmed only after the store validates the order, which normally happens once its return window closes. Orders that are cancelled, returned or found to be fraudulent have their cashback reversed, including after it was confirmed.
+
+Accounts used to abuse the system — self-referral, fake orders, or bulk sign-ups — may be restricted or closed, and any pending balance withheld.`,
+    },
+    {
+      slug: "privacy-policy",
+      title: "Privacy Policy",
+      excerpt: "How we handle your data",
+      type: "STATIC",
+      sortOrder: 3,
+      body: `We collect what we need to run the service: your name, email, optional mobile number, and the payout details you choose to give us.
+
+We record which stores you visit through our links and which orders those visits produce, because that is how cashback is calculated. We do not see what you put in your basket, your card details, or anything you type on the store's own site.
+
+Your payout details are used only to pay you. We never share them with stores, and we will never ask for your password, an OTP, or a full bank account number by email, phone or in a support ticket.
+
+You can ask us to delete your account at any time. We keep transaction records where we are required to.`,
+    },
+    {
+      slug: "refund-policy",
+      title: "Refund & Cancellation",
+      excerpt: "Refunds, cancellations and reversed cashback",
+      type: "STATIC",
+      sortOrder: 4,
+      body: `CashbackApp does not sell products, so refunds for an order are handled entirely by the store you bought from, under their own policy.
+
+What we do control is the cashback on that order. If you cancel or return a purchase, the store withdraws the commission it paid us, and the matching cashback is reversed from your wallet — even if it had already been confirmed.
+
+If a reversal takes your available balance below zero, the shortfall is recovered from future earnings rather than charged to you.
+
+Withdrawals already paid out are not clawed back.`,
+    },
+    {
+      slug: "contact-us",
+      title: "Contact Us",
+      excerpt: "Get in touch with our team",
+      type: "STATIC",
+      sortOrder: 5,
+      body: `The fastest way to reach us is to raise a support ticket from your account — it comes through with your order history attached, so we can trace a missing cashback without a round of questions.
+
+For anything about a specific order, include the store, the order ID and the date you bought.
+
+Our team never asks for your password, an OTP, or your full bank account number. If someone claiming to be us does, it isn't us.`,
+    },
+  ];
+
+  for (const cmsPage of CMS_PAGES) {
+    await prisma.cmsPage.upsert({
+      where: { slug: cmsPage.slug },
+      update: {
+        title: cmsPage.title,
+        excerpt: cmsPage.excerpt,
+        body: cmsPage.body,
+        type: cmsPage.type,
+        sortOrder: cmsPage.sortOrder,
+      },
+      create: {
+        slug: cmsPage.slug,
+        title: cmsPage.title,
+        excerpt: cmsPage.excerpt,
+        body: cmsPage.body,
+        type: cmsPage.type,
+        status: "PUBLISHED",
+        showInFooter: true,
+        sortOrder: cmsPage.sortOrder,
+        publishedAt: new Date(),
+      },
+    });
+  }
+
   const existingSettings = await prisma.supportSettings.findFirst({ where: { isActive: true } });
   if (!existingSettings) {
     await prisma.supportSettings.create({

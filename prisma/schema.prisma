@@ -103,6 +103,22 @@ enum TicketPriority {
   @@map("ticket_priority")
 }
 
+enum CmsPageType {
+  STATIC
+  CUSTOM
+  LANDING
+
+  @@map("cms_page_type")
+}
+
+enum CmsPageStatus {
+  PUBLISHED
+  DRAFT
+  ARCHIVED
+
+  @@map("cms_page_status")
+}
+
 enum WithdrawalMethod {
   UPI
   BANK_TRANSFER
@@ -174,6 +190,7 @@ model User {
   withdrawals        WithdrawalRequest[]
   supportTickets     SupportTicket[]
   supportMessages    SupportTicketMessage[]
+  cmsPagesEdited     CmsPage[]              @relation("CmsPageEditor")
 
   @@map("users")
 }
@@ -471,9 +488,51 @@ model Referral {
 /// then the money is reserved, not gone. REJECTED and CANCELLED credit it back
 /// via WITHDRAWAL_REVERSED rather than editing the original row, keeping the
 /// ledger append-only.
+/// A site page written in the admin panel and rendered at /p/pages/:slug.
+///
+/// Separate from HelpArticle on purpose: help articles answer support questions
+/// inside the dashboard, while these are the public pages a business is legally
+/// and commercially expected to have — terms, privacy, refunds, about. They have
+/// different audiences, different URLs and different lifecycles.
+model CmsPage {
+  id      String        @id @default(cuid())
+  slug    String        @unique
+  title   String
+  excerpt String?
+  body    String
+  type    CmsPageType   @default(STATIC)
+  status  CmsPageStatus @default(DRAFT)
+  /// Incremented on each public view. Advisory only — never used for billing.
+  views   Int           @default(0)
+
+  seoTitle       String? @map("seo_title")
+  seoDescription String? @map("seo_description")
+  /// Published pages appear in the footer in this order.
+  showInFooter Boolean @default(false) @map("show_in_footer")
+  sortOrder    Int     @default(0) @map("sort_order")
+
+  /// Who last saved it. Null once that admin's account is removed — the page
+  /// outlives the person who wrote it.
+  updatedById String?   @map("updated_by_id")
+  publishedAt DateTime? @map("published_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  updatedBy User? @relation("CmsPageEditor", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@index([status, sortOrder])
+  @@index([type])
+  @@map("cms_pages")
+}
+
 model WithdrawalRequest {
-  id     String           @id @default(cuid())
-  userId String           @map("user_id")
+  id String @id @default(cuid())
+  /// Human-facing reference, e.g. "PO-48210". Generated in application code
+  /// (see generatePayoutReference) rather than defaulted to a cuid, and random
+  /// rather than sequential so it doesn't leak payout volume or let one user
+  /// guess another's.
+  reference String @unique
+  userId    String @map("user_id")
   amount Decimal          @db.Decimal(12, 2)
   method WithdrawalMethod
   /// Where the money goes — a UPI id, or a masked account reference. Never a

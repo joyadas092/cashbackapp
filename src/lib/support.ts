@@ -14,6 +14,18 @@ export function generateTicketNumber(): string {
 }
 
 /**
+ * Human-facing payout reference, e.g. "PO-48210".
+ *
+ * Random for the same reason ticket numbers are: a sequential payout number
+ * would leak how much money the platform moves and let one user guess another's
+ * reference. Callers retry against the unique constraint on collision.
+ */
+export function generatePayoutReference(): string {
+  const n = 10000 + Math.floor(Math.random() * 90000);
+  return `PO-${n}`;
+}
+
+/**
  * The admin panel used to be dark and needed its own palette here. It is light
  * now, so both surfaces share one set of tones rather than keeping a second
  * copy that can drift.

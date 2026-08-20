@@ -104,6 +104,26 @@ export const helpArticleSchema = z.object({
 });
 export type HelpArticleInput = z.infer<typeof helpArticleSchema>;
 
+export const cmsPageSchema = z.object({
+  title: z.string().trim().min(3).max(200),
+  slug: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .min(2)
+    .max(120)
+    .regex(/^[a-z0-9-]+$/, "Slug must be lowercase letters, numbers and hyphens only"),
+  excerpt: z.string().trim().max(300).nullable().optional(),
+  body: z.string().trim().min(10).max(60000),
+  type: z.enum(["STATIC", "CUSTOM", "LANDING"]).default("STATIC"),
+  status: z.enum(["PUBLISHED", "DRAFT", "ARCHIVED"]).default("DRAFT"),
+  seoTitle: z.string().trim().max(200).nullable().optional(),
+  seoDescription: z.string().trim().max(300).nullable().optional(),
+  showInFooter: z.boolean().default(false),
+  sortOrder: z.coerce.number().int().min(0).max(9999).default(0),
+});
+export type CmsPageInput = z.infer<typeof cmsPageSchema>;
+
 export const supportSettingsSchema = z.object({
   email: z.string().trim().email().max(150).nullable().optional().or(z.literal("")),
   phone: z.string().trim().max(40).nullable().optional(),

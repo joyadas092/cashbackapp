@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { generatePayoutReference } from "@/lib/support";
 
 /**
  * Withdrawal requests.
@@ -85,6 +86,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Wallet not found" }, { status: 404 });
   }
 
+  // References are random, so check for a clash before writing. The unique
+  // constraint is still the real guarantee — this just avoids failing a
+  // withdrawal over a collision we can cheaply avoid.
+  let reference = generatePayoutReference();
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const clash = await prisma.withdrawalRequest.findUnique({
+      where: { reference },
+      select: { id: true },
+    });
+    if (!clash) break;
+    reference = generatePayoutReference();
+  }
+
   try {
     const result = await prisma.$transaction(async (tx) => {
       // The balance is a condition of the write, so a concurrent request can
@@ -99,7 +113,14 @@ export async function POST(req: NextRequest) {
       }
 
       const request = await tx.withdrawalRequest.create({
-        data: { userId, amount, method, destination, status: "REQUESTED" },
+        data: {
+          reference,
+          userId,
+          amount,
+          method,
+          destination,
+          status: "REQUESTED",
+        },
       });
 
       await tx.walletTransaction.create({
