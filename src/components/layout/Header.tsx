@@ -7,7 +7,7 @@ import { LogoMark } from "@/components/shared/LogoMark";
 import { UserMenu } from "./UserMenu";
 import { HeaderNav } from "./HeaderNav";
 import { MobileMenu } from "./MobileMenu";
-import { primaryNavLinks } from "./navLinks";
+import { accountNavLinks, primaryNavLinks } from "./navLinks";
 
 export async function Header() {
   const session = await auth();
@@ -15,7 +15,7 @@ export async function Header() {
   const wallet = session?.user
     ? await prisma.wallet.findUnique({
         where: { userId: session.user.id },
-        select: { availableBalance: true },
+        select: { availableBalance: true, pendingCashback: true },
       })
     : null;
 
@@ -30,8 +30,19 @@ export async function Header() {
       <div className="mx-auto flex h-16 max-w-7xl items-center gap-2 px-4 sm:gap-4">
         <MobileMenu
           links={primaryNavLinks(Boolean(session?.user))}
+          accountLinks={accountNavLinks()}
           isLoggedIn={Boolean(session?.user)}
           isAdmin={session?.user?.role === "ADMIN"}
+          user={
+            session?.user
+              ? {
+                  name: session.user.name ?? "there",
+                  availableBalance: Number(wallet?.availableBalance ?? 0),
+                  pendingBalance: Number(wallet?.pendingCashback ?? 0),
+                }
+              : null
+          }
+          onSignOut={handleSignOut}
         />
 
         <Link

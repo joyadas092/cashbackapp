@@ -10,7 +10,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <DashboardShell
-      user={{ name: session.user.name ?? "there", email: session.user.email ?? "" }}
+      user={{
+        id: session.user.id,
+        name: session.user.name ?? "there",
+        email: session.user.email ?? "",
+      }}
     >
       {children}
     </DashboardShell>

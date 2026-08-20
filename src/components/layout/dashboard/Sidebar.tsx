@@ -1,29 +1,29 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
   Activity,
   Bell,
   Gift,
+  Home,
   LifeBuoy,
   Link2,
   type LucideIcon,
   Menu,
   Package,
   Settings,
+  Sparkles,
+  Store,
   Tag,
   Users,
   Wallet,
-  X,
 } from "lucide-react";
-import { LogoMark } from "@/components/shared/LogoMark";
 import { Button } from "@/components/ui/Button";
 import { SidebarNavItem } from "./SidebarNavItem";
 import { SidebarNavGroup, type SidebarSubItem } from "./SidebarNavGroup";
 import { ACTIVITY_TABS } from "@/components/activity/ActivityTabs";
-import { cn } from "@/lib/utils";
+import { formatInrExact } from "@/lib/utils";
 
 // My Activity is the app's home now — it already carries the wallet-wide
 // numbers the old Dashboard summarised, so a separate overview page was just
@@ -34,6 +34,19 @@ const ACTIVITY_SUB_ITEMS: SidebarSubItem[] = ACTIVITY_TABS.map((tab) => ({
   href:
     tab.key === "overview" ? "/dashboard/activity" : `/dashboard/activity?tab=${tab.key}`,
 }));
+
+/** The site itself, reachable from inside the account area. */
+const BROWSE_ITEMS: Array<{
+  href: string;
+  icon: LucideIcon;
+  label: string;
+  disabled?: boolean;
+}> = [
+  { href: "/", icon: Home, label: "Home" },
+  { href: "/stores", icon: Store, label: "All Stores" },
+  { href: "/share-earn", icon: Sparkles, label: "Share & Earn" },
+  { href: "#", icon: Tag, label: "Top Deals", disabled: true },
+];
 
 const NAV_ITEMS: Array<{ href: string; icon: LucideIcon; label: string; disabled?: boolean }> = [
   { href: "/dashboard/wallet", icon: Wallet, label: "Wallet" },
@@ -71,57 +84,59 @@ function helpTabFor(pathname: string): string | undefined {
 
 export function Sidebar({
   user,
+  balance,
   onSignOut,
 }: {
   user: { name: string; email: string };
+  balance: { available: number; pending: number };
   onSignOut: () => Promise<void>;
 }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [open, setOpen] = useState(false);
 
+  // Desktop only. On phones the header's slide-over carries the same links
+  // alongside the site's own, so there is one menu rather than two that
+  // disagree about where you are.
   return (
     <>
-      {/* Mobile topbar — the desktop header is hidden below sm, so this carries the menu toggle */}
-      <div className="fixed inset-x-0 top-0 z-40 flex items-center gap-3 border-b border-white/10 bg-chrome-gradient px-4 py-3 sm:hidden">
-        <button onClick={() => setOpen(true)} aria-label="Open menu" className="text-white/80">
-          <Menu size={24} strokeWidth={1.75} />
-        </button>
-        <Link href="/" className="flex items-center gap-2 font-extrabold text-white">
-          <LogoMark size={22} />
-          Cashback<span className="text-cashlime-400">.</span>
-        </Link>
-      </div>
-
-      {open && (
-        <div
-          className="fixed inset-0 z-40 bg-black/60 sm:hidden"
-          onClick={() => setOpen(false)}
-          aria-hidden
-        />
-      )}
-
       <aside
-        className={cn(
-          // Desktop: sits below the h-16 sticky Header, so top-16 / 100vh-4rem.
-          "fixed inset-y-0 left-0 z-50 w-64 bg-chrome-gradient transition-transform duration-200 sm:sticky sm:top-16 sm:h-[calc(100vh-4rem)] sm:translate-x-0",
-          open ? "translate-x-0" : "-translate-x-full"
-        )}
+        // Sits below the h-16 sticky Header, so top-16 / 100vh-4rem.
+        className="sticky top-16 hidden h-[calc(100vh-4rem)] w-64 shrink-0 bg-chrome-gradient sm:block"
       >
         <div className="flex h-full flex-col overflow-y-auto px-3 py-5">
-          <div className="mb-6 flex items-center justify-between px-2">
-            <Link href="/" className="flex items-center gap-2 font-extrabold text-white">
-              <LogoMark size={26} />
-              Cashback<span className="text-cashlime-400">.</span>
-            </Link>
-            <button
-              onClick={() => setOpen(false)}
-              aria-label="Close menu"
-              className="text-white/50 sm:hidden"
-            >
-              <X size={20} strokeWidth={1.75} />
-            </button>
-          </div>
+          {/* What am I owed — the question this panel exists to answer. */}
+          <Link
+            href="/dashboard/wallet"
+            className="mb-5 grid grid-cols-2 gap-2 rounded-xl2 border border-white/10 bg-white/5 p-3.5 transition-colors hover:border-violet-400/40"
+          >
+            <span>
+              <span className="block text-[11px] text-white/50">Available</span>
+              <span className="block text-sm font-bold text-cashlime-400">
+                {formatInrExact(balance.available)}
+              </span>
+            </span>
+            <span>
+              <span className="block text-[11px] text-white/50">Pending</span>
+              <span className="block text-sm font-bold text-amber-300">
+                {formatInrExact(balance.pending)}
+              </span>
+            </span>
+          </Link>
+
+          {/* Browse links first. Without these the panel was a dead end: every
+              destination was another account page. */}
+          <nav className="mb-4 flex flex-col gap-1 border-b border-white/10 pb-4">
+            {BROWSE_ITEMS.map((item) => (
+              <SidebarNavItem
+                key={item.label}
+                href={item.href}
+                icon={item.icon}
+                label={item.label}
+                active={!item.disabled && pathname === item.href}
+                disabled={item.disabled}
+              />
+            ))}
+          </nav>
 
           <nav className="flex flex-col gap-1">
             <SidebarNavGroup
@@ -131,7 +146,6 @@ export function Sidebar({
               items={ACTIVITY_SUB_ITEMS}
               sectionActive={pathname === "/dashboard/activity"}
               activeTab={searchParams.get("tab") ?? "overview"}
-              onNavigate={() => setOpen(false)}
             />
 
             {[...NAV_ITEMS, ...NAV_ITEMS_AFTER].map((item) => (
@@ -142,7 +156,6 @@ export function Sidebar({
                 label={item.label}
                 active={!item.disabled && pathname === item.href}
                 disabled={item.disabled}
-                onClick={() => setOpen(false)}
               />
             ))}
 
@@ -153,7 +166,6 @@ export function Sidebar({
               items={HELP_SUB_ITEMS}
               sectionActive={pathname.startsWith("/dashboard/help")}
               activeTab={helpTabFor(pathname)}
-              onNavigate={() => setOpen(false)}
             />
           </nav>
 
@@ -164,7 +176,7 @@ export function Sidebar({
             </span>
             <div className="mt-3 text-sm font-bold text-white">Invite Friends & Earn More</div>
             <p className="mt-1 text-xs text-white/50">Earn from your friends&apos; activity.</p>
-            <Link href="/dashboard/refer" onClick={() => setOpen(false)}>
+            <Link href="/dashboard/refer">
               <Button variant="primary" size="sm" className="mt-3 w-full">
                 Invite Now
               </Button>

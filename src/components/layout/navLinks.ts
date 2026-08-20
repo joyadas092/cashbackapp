@@ -27,3 +27,23 @@ export function primaryNavLinks(isLoggedIn: boolean): NavLink[] {
       : [{ href: "#", label: "Help", disabled: true }]),
   ];
 }
+
+/**
+ * The signed-in visitor's own pages.
+ *
+ * Kept separate from the primary links because the mobile menu shows both as
+ * distinct groups: browsing the site and managing your account are different
+ * intents, and merging them into one flat list is what made the panel feel
+ * disconnected from the rest of the site.
+ */
+export function accountNavLinks(): NavLink[] {
+  return [
+    { href: "/dashboard/activity", label: "My Activity" },
+    { href: "/dashboard/wallet", label: "My Wallet" },
+    { href: "/dashboard/orders", label: "Orders" },
+    { href: "/share-earn", label: "Profit Links" },
+    { href: "/dashboard/refer", label: "Refer & Earn" },
+    { href: "/dashboard/profile", label: "Profile & Settings" },
+    { href: "/dashboard/help", label: "Help & Support" },
+  ];
+}

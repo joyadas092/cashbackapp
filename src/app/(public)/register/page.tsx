@@ -44,7 +44,9 @@ function RegisterForm() {
       return;
     }
 
-    router.push("/dashboard");
+    // Home, matching login: a new account should land on the stores, not on an
+    // activity page that is empty until they have shopped.
+    router.push("/");
     router.refresh();
   }
 

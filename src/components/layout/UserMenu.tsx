@@ -2,7 +2,18 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ChevronDown, LayoutDashboard, LogOut, Package, Settings, Wallet } from "lucide-react";
+import {
+  ChevronDown,
+  LayoutDashboard,
+  LifeBuoy,
+  Link2,
+  LogOut,
+  Package,
+  Settings,
+  Store,
+  Users,
+  Wallet,
+} from "lucide-react";
 import { Avatar } from "@/components/shared/Avatar";
 import { formatInr } from "@/lib/utils";
 
@@ -48,11 +59,15 @@ export function UserMenu({
               Balance <span className="font-semibold text-cashlime-700">{formatInr(balance)}</span>
             </div>
           </div>
-          <nav className="py-1">
+          <nav className="max-h-[60vh] overflow-y-auto py-1">
             {[
               { href: "/dashboard/activity", icon: LayoutDashboard, label: "My Activity" },
               { href: "/dashboard/wallet", icon: Wallet, label: "My Wallet" },
               { href: "/dashboard/orders", icon: Package, label: "Orders" },
+              { href: "/stores", icon: Store, label: "All Stores" },
+              { href: "/share-earn", icon: Link2, label: "Profit Links" },
+              { href: "/dashboard/refer", icon: Users, label: "Refer & Earn" },
+              { href: "/dashboard/help", icon: LifeBuoy, label: "Help & Support" },
               { href: "/dashboard/profile", icon: Settings, label: "Settings" },
             ].map((item) => (
               <Link

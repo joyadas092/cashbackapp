@@ -10,7 +10,10 @@ import { AuthSplitLayout } from "@/components/auth/AuthSplitLayout";
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") ?? "/dashboard";
+  // Home, not the dashboard: someone signing in wants to shop, and dropping
+  // them straight into their account pages hides the stores the site is for.
+  // An explicit callbackUrl (a guarded page they were headed to) still wins.
+  const callbackUrl = searchParams.get("callbackUrl") ?? "/";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
