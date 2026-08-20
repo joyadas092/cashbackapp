@@ -1,12 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { randomBytes } from "node:crypto";
 import { prisma } from "@/lib/db";
 import { registerSchema } from "@/lib/validation/schemas";
-
-function generateReferralCode(): string {
-  return randomBytes(4).toString("hex").toUpperCase();
-}
+import { generateUniqueReferralCode } from "@/lib/referralCode";
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
@@ -28,11 +24,7 @@ export async function POST(req: NextRequest) {
 
   const passwordHash = await bcrypt.hash(password, 10);
 
-  let referralCode = generateReferralCode();
-  // Extremely unlikely to collide, but guard anyway since it's a unique column.
-  while (await prisma.user.findUnique({ where: { referralCode } })) {
-    referralCode = generateReferralCode();
-  }
+  const referralCode = await generateUniqueReferralCode();
 
   // Referral attribution: an explicit code in the request body wins; falls
   // back to the referral_code cookie set by /refer/[code] for users who

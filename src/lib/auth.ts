@@ -23,6 +23,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const valid = await bcrypt.compare(parsed.data.password, user.passwordHash);
         if (!valid) return null;
 
+        // A blocked account cannot sign in. Checked here rather than only in the
+        // UI, so blocking from the admin panel actually ends access instead of
+        // just changing a label. RESTRICTED still signs in — it limits what the
+        // account can do (see the withdrawal endpoint), not whether it exists.
+        if (user.riskStatus === "BLOCKED") return null;
+
         return {
           id: user.id,
           email: user.email,

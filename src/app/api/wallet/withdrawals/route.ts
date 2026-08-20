@@ -66,6 +66,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Enter a valid UPI ID, e.g. name@bank" }, { status: 400 });
   }
 
+  // A restricted or blocked account keeps its balance but cannot take money
+  // out. Read fresh rather than trusting the JWT: a session issued before an
+  // admin restricted the account would still carry the old status.
+  const account = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { riskStatus: true },
+  });
+  if (account?.riskStatus === "RESTRICTED" || account?.riskStatus === "BLOCKED") {
+    return NextResponse.json(
+      { error: "Withdrawals are paused on this account. Contact support for help." },
+      { status: 403 }
+    );
+  }
+
   const wallet = await prisma.wallet.findUnique({ where: { userId }, select: { id: true } });
   if (!wallet) {
     return NextResponse.json({ error: "Wallet not found" }, { status: 404 });
