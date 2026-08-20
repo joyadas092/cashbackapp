@@ -2,6 +2,12 @@ import Link from "next/link";
 import type { TransactionStatus } from "@prisma/client";
 import { requireAdminSession } from "@/lib/adminAuth";
 import { prisma } from "@/lib/db";
+import { DateRangeFilter } from "@/components/shared/DateRangeFilter";
+import {
+  dateRangeToParams,
+  dateRangeWhere,
+  parseDateRangeFromSearchParams,
+} from "@/lib/dateRangeFilter";
 import {
   AdminBadge,
   AdminCard,
@@ -13,6 +19,7 @@ import {
 } from "@/components/admin/ui";
 import { StoreLogo } from "@/components/store/StoreLogo";
 import { formatInrExact } from "@/lib/utils";
+import { LocalTime } from "@/components/shared/LocalTime";
 
 const PAGE_SIZE = 25;
 
@@ -45,17 +52,29 @@ function dateTime(date: Date): string {
 export default async function AdminTransactionsPage({
   searchParams,
 }: {
-  searchParams: { status?: string; page?: string };
+  searchParams: Record<string, string | string[] | undefined>;
 }) {
   await requireAdminSession("/admin/transactions");
 
-  const filterKey = FILTERS.some((f) => f.key === searchParams.status)
-    ? (searchParams.status as string)
-    : "all";
-  const filter = FILTERS.find((f) => f.key === filterKey)!;
-  const page = Math.max(1, parseInt(searchParams.page ?? "1", 10) || 1);
+  const one = (key: string): string | undefined => {
+    const value = searchParams[key];
+    return Array.isArray(value) ? value[0] : value;
+  };
 
-  const where = filter.statuses ? { status: { in: filter.statuses } } : {};
+  const statusParam = one("status");
+  const filterKey = FILTERS.some((f) => f.key === statusParam) ? (statusParam as string) : "all";
+  const filter = FILTERS.find((f) => f.key === filterKey)!;
+  const page = Math.max(1, parseInt(one("page") ?? "1", 10) || 1);
+
+  const range = parseDateRangeFromSearchParams(searchParams);
+  const createdAtFilter = dateRangeWhere(range);
+  const rangeSuffix = dateRangeToParams(range).toString();
+  const rangeQs = rangeSuffix ? `&${rangeSuffix}` : "";
+
+  const where = {
+    ...(filter.statuses ? { status: { in: filter.statuses } } : {}),
+    ...(createdAtFilter ? { createdAt: createdAtFilter } : {}),
+  };
 
   const [transactions, total, counts, totals] = await Promise.all([
     prisma.transaction.findMany({
@@ -75,7 +94,11 @@ export default async function AdminTransactionsPage({
       },
     }),
     prisma.transaction.count({ where }),
-    prisma.transaction.groupBy({ by: ["status"], _count: { _all: true } }),
+    prisma.transaction.groupBy({
+      by: ["status"],
+      where: createdAtFilter ? { createdAt: createdAtFilter } : {},
+      _count: { _all: true },
+    }),
     prisma.transaction.aggregate({
       where,
       _sum: { saleAmount: true, commissionAmount: true, customerAmount: true },
@@ -120,7 +143,7 @@ export default async function AdminTransactionsPage({
             return (
               <Link
                 key={f.key}
-                href={`/admin/transactions?status=${f.key}`}
+                href={`/admin/transactions?status=${f.key}${rangeQs}`}
                 aria-current={isActive ? "page" : undefined}
                 className={`-mb-px shrink-0 whitespace-nowrap border-b-2 px-3 py-3.5 text-sm font-semibold transition-colors ${
                   isActive
@@ -133,6 +156,25 @@ export default async function AdminTransactionsPage({
             );
           })}
         </nav>
+
+        {/* GET form so the range stays in the URL and survives paging. */}
+        <form
+          action="/admin/transactions"
+          className="flex flex-wrap items-center gap-2 border-b border-slate-200 bg-slate-50/60 px-4 py-3 sm:px-5"
+        >
+          <input type="hidden" name="status" value={filterKey} />
+          <DateRangeFilter
+            range={range}
+            basePath="/admin/transactions"
+            hiddenFields={{ status: filterKey }}
+          />
+          <button
+            type="submit"
+            className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-slate-700"
+          >
+            Apply
+          </button>
+        </form>
 
         {transactions.length === 0 ? (
           <AdminEmpty title="No transactions here" />
@@ -162,7 +204,7 @@ export default async function AdminTransactionsPage({
                 return (
                   <tr key={tx.id} className="hover:bg-slate-50/60">
                     <td className="whitespace-nowrap px-5 py-3 text-slate-500">
-                      {dateTime(tx.createdAt)}
+                      <LocalTime value={tx.createdAt.toISOString()} />
                     </td>
                     <td className="px-5 py-3 font-mono text-xs text-slate-600">
                       {tx.orderId ?? tx.cuelinksTransactionId}
@@ -219,7 +261,7 @@ export default async function AdminTransactionsPage({
           totalPages={totalPages}
           total={total}
           noun="transactions"
-          hrefForPage={(p) => `/admin/transactions?status=${filterKey}&page=${p}`}
+          hrefForPage={(p) => `/admin/transactions?status=${filterKey}&page=${p}${rangeQs}`}
         />
       </AdminCard>
     </div>

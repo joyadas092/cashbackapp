@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowUpDown, CalendarDays, Check, Copy, History, MousePointerClick } from "lucide-react";
 import { StoreLogo } from "@/components/store/StoreLogo";
+import { LocalTime } from "@/components/shared/LocalTime";
 
 interface RecentLink {
   id: string;
@@ -77,7 +78,7 @@ export function RecentLinksPanel({
   }, [load, refreshKey]);
 
   async function copy(link: RecentLink) {
-    await navigator.clipboard.writeText(`${window.location.origin}/p/${link.code}`);
+    await navigator.clipboard.writeText(link.shareUrl);
     setCopiedId(link.id);
     setTimeout(() => setCopiedId(null), 2000);
   }
@@ -178,8 +179,18 @@ export function RecentLinksPanel({
                     <div className="truncate text-sm font-semibold text-slate-900">
                       {link.store.name}
                     </div>
-                    <div className="flex items-center gap-2 text-xs text-slate-400">
-                      <span>{formatDate(link.createdAt)}</span>
+                    {/* Full URL, not the bare code — this is the thing people
+                        paste, so it has to be readable and selectable. */}
+                    <a
+                      href={link.shareUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-0.5 block break-all font-mono text-[11px] leading-tight text-violet-700 hover:underline"
+                    >
+                      {link.shareUrl}
+                    </a>
+                    <div className="mt-0.5 flex items-center gap-2 text-xs text-slate-400">
+                      <span><LocalTime value={link.createdAt} format="date" /></span>
                       <span className="flex items-center gap-0.5">
                         <MousePointerClick size={11} strokeWidth={2} />
                         {link.clickCount}

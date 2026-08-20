@@ -3,6 +3,13 @@ import type { Prisma, WithdrawalStatus } from "@prisma/client";
 import { Ban, CheckCircle2, Clock, Search, Wallet, XCircle } from "lucide-react";
 import { requireAdminSession } from "@/lib/adminAuth";
 import { prisma } from "@/lib/db";
+import { DateRangeFilter } from "@/components/shared/DateRangeFilter";
+import {
+  dateRangeToParams,
+  dateRangeWhere,
+  isDateRangeActive,
+  parseDateRangeFromSearchParams,
+} from "@/lib/dateRangeFilter";
 import {
   AdminBadge,
   AdminCard,
@@ -18,6 +25,7 @@ import { PayoutActions } from "@/components/admin/PayoutActions";
 import { Avatar } from "@/components/shared/Avatar";
 import { reportDateTime } from "@/lib/adminReports";
 import { formatInr, formatInrExact } from "@/lib/utils";
+import { LocalTime } from "@/components/shared/LocalTime";
 
 const PAGE_SIZE = 20;
 
@@ -50,21 +58,31 @@ const selectClass =
 export default async function AdminPayoutsPage({
   searchParams,
 }: {
-  searchParams: { status?: string; method?: string; q?: string; page?: string };
+  searchParams: Record<string, string | string[] | undefined>;
 }) {
   await requireAdminSession("/admin/payouts");
 
-  const filterKey = FILTERS.some((f) => f.key === searchParams.status)
-    ? (searchParams.status as string)
-    : "pending";
+  const one = (key: string): string | undefined => {
+    const value = searchParams[key];
+    return Array.isArray(value) ? value[0] : value;
+  };
+
+  const statusParam = one("status");
+  const filterKey = FILTERS.some((f) => f.key === statusParam) ? (statusParam as string) : "pending";
   const filter = FILTERS.find((f) => f.key === filterKey)!;
-  const methodParam = searchParams.method ?? "all";
+  const methodParam = one("method") ?? "all";
   const method = Object.keys(METHOD_LABELS).includes(methodParam) ? methodParam : "all";
-  const query = (searchParams.q ?? "").trim();
-  const page = Math.max(1, parseInt(searchParams.page ?? "1", 10) || 1);
+  const query = (one("q") ?? "").trim();
+  const page = Math.max(1, parseInt(one("page") ?? "1", 10) || 1);
+
+  // Ranged on requestedAt, the date the queue is ordered by and the one an
+  // admin means by "payouts in March".
+  const range = parseDateRangeFromSearchParams(searchParams);
+  const requestedAtFilter = dateRangeWhere(range);
 
   const where: Prisma.WithdrawalRequestWhereInput = {
     ...(filter.statuses ? { status: { in: filter.statuses } } : {}),
+    ...(requestedAtFilter ? { requestedAt: requestedAtFilter } : {}),
     ...(method !== "all" ? { method: method as Prisma.EnumWithdrawalMethodFilter["equals"] } : {}),
     ...(query
       ? {
@@ -91,10 +109,15 @@ export default async function AdminPayoutsPage({
     prisma.withdrawalRequest.count({ where }),
     prisma.withdrawalRequest.groupBy({
       by: ["status"],
+      where: requestedAtFilter ? { requestedAt: requestedAtFilter } : {},
       _sum: { amount: true },
       _count: { _all: true },
     }),
-    prisma.withdrawalRequest.groupBy({ by: ["method"], _sum: { amount: true } }),
+    prisma.withdrawalRequest.groupBy({
+      by: ["method"],
+      where: requestedAtFilter ? { requestedAt: requestedAtFilter } : {},
+      _sum: { amount: true },
+    }),
     prisma.withdrawalRequest.findMany({
       orderBy: { updatedAt: "desc" },
       take: 6,
@@ -142,6 +165,7 @@ export default async function AdminPayoutsPage({
     params.set("status", filterKey);
     if (method !== "all") params.set("method", method);
     if (query) params.set("q", query);
+    dateRangeToParams(range, params);
     for (const [key, value] of Object.entries(overrides)) params.set(key, String(value));
     return `/admin/payouts?${params.toString()}`;
   };
@@ -182,7 +206,12 @@ export default async function AdminPayoutsPage({
               return (
                 <Link
                   key={f.key}
-                  href={`/admin/payouts?status=${f.key}`}
+                  href={
+                    `/admin/payouts?status=${f.key}` +
+                    (dateRangeToParams(range).toString()
+                      ? `&${dateRangeToParams(range).toString()}`
+                      : "")
+                  }
                   aria-current={isActive ? "page" : undefined}
                   className={`-mb-px shrink-0 whitespace-nowrap border-b-2 px-3 py-3.5 text-sm font-semibold transition-colors ${
                     isActive
@@ -223,6 +252,12 @@ export default async function AdminPayoutsPage({
               ))}
             </select>
 
+            <DateRangeFilter
+              range={range}
+              basePath="/admin/payouts"
+              hiddenFields={{ status: filterKey, q: query, method: method === "all" ? "" : method }}
+            />
+
             <button
               type="submit"
               className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
@@ -230,7 +265,7 @@ export default async function AdminPayoutsPage({
               Apply
             </button>
 
-            {(query || method !== "all") && (
+            {(query || method !== "all" || isDateRangeActive(range)) && (
               <Link
                 href={`/admin/payouts?status=${filterKey}`}
                 className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"
@@ -298,7 +333,7 @@ export default async function AdminPayoutsPage({
                       />
                     </td>
                     <td className="whitespace-nowrap px-5 py-3 text-slate-500">
-                      {reportDateTime(request.requestedAt)}
+                      <LocalTime value={request.requestedAt.toISOString()} />
                     </td>
                     <td className="whitespace-nowrap px-5 py-3 text-slate-500">
                       {request.processedAt ? reportDateTime(request.processedAt) : "—"}

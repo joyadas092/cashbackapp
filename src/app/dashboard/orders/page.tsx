@@ -7,6 +7,8 @@ import { prisma } from "@/lib/db";
 import { OrdersList, type OrderRow } from "@/components/orders/OrdersList";
 import { daysUntil, estimateConfirmationDate } from "@/lib/orders";
 import { formatInrExact } from "@/lib/utils";
+import { DateRangeFilter } from "@/components/shared/DateRangeFilter";
+import { dateRangeToParams, dateRangeWhere, parseDateRange } from "@/lib/dateRangeFilter";
 
 const PAGE_SIZE = 20;
 
@@ -20,7 +22,7 @@ const FILTERS: Array<{ key: string; label: string; statuses: TransactionStatus[]
 export default async function OrdersPage({
   searchParams,
 }: {
-  searchParams: { status?: string; page?: string };
+  searchParams: Record<string, string | string[] | undefined>;
 }) {
   const session = await auth();
   // Layout guards too, but Next fetches layout and page data in parallel.
@@ -29,16 +31,33 @@ export default async function OrdersPage({
   }
   const userId = session.user.id;
 
-  const filterKey = FILTERS.some((f) => f.key === searchParams.status)
-    ? (searchParams.status as string)
-    : "all";
+  // Next hands repeated keys through as arrays; every filter here is single-valued.
+  const one = (key: string): string | undefined => {
+    const value = searchParams[key];
+    return Array.isArray(value) ? value[0] : value;
+  };
+
+  const statusParam = one("status");
+  const filterKey = FILTERS.some((f) => f.key === statusParam) ? (statusParam as string) : "all";
   const filter = FILTERS.find((f) => f.key === filterKey)!;
-  const page = Math.max(1, parseInt(searchParams.page ?? "1", 10) || 1);
+  const page = Math.max(1, parseInt(one("page") ?? "1", 10) || 1);
+
+  const rangeParams = new URLSearchParams();
+  for (const key of ["range", "from", "to"]) {
+    const value = one(key);
+    if (value) rangeParams.set(key, value);
+  }
+  const range = parseDateRange(rangeParams);
+  const createdAtFilter = dateRangeWhere(range);
+  const rangeSuffix = dateRangeToParams(range).toString();
 
   // Orders are the user's own shopping. Purchases other people made through a
   // shared profit link are earnings, not this user's orders, and live under
   // My Activity instead.
-  const baseWhere = { click: { userId, clickType: { not: "PROFIT_LINK" as const } } };
+  const baseWhere = {
+    click: { userId, clickType: { not: "PROFIT_LINK" as const } },
+    ...(createdAtFilter ? { createdAt: createdAtFilter } : {}),
+  };
   const where = {
     ...baseWhere,
     ...(filter.statuses ? { status: { in: filter.statuses } } : {}),
@@ -114,7 +133,9 @@ export default async function OrdersPage({
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const hrefFor = (status: string, p = 1) =>
-    `/dashboard/orders?status=${status}${p > 1 ? `&page=${p}` : ""}`;
+    `/dashboard/orders?status=${status}${p > 1 ? `&page=${p}` : ""}${
+      rangeSuffix ? `&${rangeSuffix}` : ""
+    }`;
 
   const summary = [
     {
@@ -197,6 +218,28 @@ export default async function OrdersPage({
             );
           })}
         </nav>
+
+        {/* GET form so the chosen range stays in the URL and survives paging. */}
+        <form
+          method="get"
+          action="/dashboard/orders"
+          className="border-b border-slate-200 bg-slate-50/60 px-4 py-3 sm:px-5"
+        >
+          <input type="hidden" name="status" value={filterKey} />
+          <div className="flex flex-wrap items-center gap-2">
+            <DateRangeFilter
+              range={range}
+              basePath="/dashboard/orders"
+              hiddenFields={{ status: filterKey }}
+            />
+            <button
+              type="submit"
+              className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-slate-700"
+            >
+              Apply
+            </button>
+          </div>
+        </form>
 
         <OrdersList orders={rows} />
 

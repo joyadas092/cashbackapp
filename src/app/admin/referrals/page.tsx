@@ -22,6 +22,7 @@ import {
   reportWindows,
 } from "@/lib/adminReports";
 import { formatInr, formatInrExact } from "@/lib/utils";
+import { LocalTime } from "@/components/shared/LocalTime";
 
 const PAGE_SIZE = 15;
 
@@ -422,7 +423,7 @@ export default async function AdminReferralsPage({
                       />
                     </td>
                     <td className="whitespace-nowrap px-5 py-3 text-slate-500">
-                      {reportDateTime(referral.createdAt)}
+                      <LocalTime value={referral.createdAt.toISOString()} />
                     </td>
                   </tr>
                 ))}

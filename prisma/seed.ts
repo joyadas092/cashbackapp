@@ -985,6 +985,7 @@ async function main() {
         cashbackType: CashbackType.PERCENTAGE,
         logoUrl: publicLogoUrl(s.domains[0]),
         merchantDomains: s.domains,
+        homepageUrl: `https://${s.domains[0]}/`,
         profitLinkEligible: true,
       },
       create: {
@@ -998,6 +999,7 @@ async function main() {
         featured: s.featured ?? false,
         cuelinksCampaignId: `stub_${s.slug}`,
         merchantDomains: s.domains,
+        homepageUrl: `https://${s.domains[0]}/`,
         profitLinkEligible: true,
       },
     });

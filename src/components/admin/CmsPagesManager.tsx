@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Eye, FileText, Pencil, Plus } from "lucide-react";
 import { AdminBadge, AdminEmpty, AdminTableWrap, AdminTh } from "@/components/admin/ui";
 import { CmsPageEditor, EMPTY_CMS_PAGE, type CmsPageDraft } from "./CmsPageEditor";
+import { LocalTime } from "@/components/shared/LocalTime";
 
 export interface CmsPageRow extends CmsPageDraft {
   views: number;
@@ -108,7 +109,7 @@ export function CmsPagesManager({ pages }: { pages: CmsPageRow[] }) {
                       <AdminBadge label={status.label} tone={status.tone} />
                     </td>
                     <td className="whitespace-nowrap px-5 py-3">
-                      <span className="block text-slate-500">{formatDateTime(page.updatedAt)}</span>
+                      <span className="block text-slate-500"><LocalTime value={page.updatedAt} format="datetime" /></span>
                       {page.updatedByName && (
                         <span className="block text-xs text-slate-400">
                           by {page.updatedByName}

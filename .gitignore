@@ -3,6 +3,7 @@
 
 # next.js
 /.next/
+/.next-verify/
 /out/
 
 # production
@@ -27,3 +28,5 @@ next-env.d.ts
 # planning material with real account screenshots — not for source control
 Screenshot*.png
 
+# local scratch notes (contains login credentials)
+imp.txt

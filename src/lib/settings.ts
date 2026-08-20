@@ -31,6 +31,11 @@ export interface PlatformSettings {
   maxWithdrawalAmount: number;
   /** Methods offered to users and accepted by the withdrawal endpoint. */
   payoutMethods: string[];
+  /**
+   * Withdrawals above this amount require a PAN on file, for TDS. Zero means
+   * never require one.
+   */
+  panRequiredAboveAmount: number;
 
   // --- SEO -----------------------------------------------------------------
   seoTitle: string;
@@ -56,6 +61,7 @@ export const DEFAULT_SETTINGS: PlatformSettings = {
   minWithdrawalAmount: 100,
   maxWithdrawalAmount: 50000,
   payoutMethods: ["UPI", "BANK_TRANSFER", "PAYTM", "AMAZON_PAY"],
+  panRequiredAboveAmount: 10000,
 
   seoTitle: "CashbackApp — Shop Smarter. Get Cashback. Earn More.",
   seoDescription:
@@ -77,6 +83,7 @@ export const SETTING_KEYS: Record<keyof PlatformSettings, string> = {
   minWithdrawalAmount: "min_withdrawal_amount",
   maxWithdrawalAmount: "max_withdrawal_amount",
   payoutMethods: "payout_methods",
+  panRequiredAboveAmount: "pan_required_above_amount",
   seoTitle: "seo_title",
   seoDescription: "seo_description",
   searchIndexingEnabled: "search_indexing_enabled",

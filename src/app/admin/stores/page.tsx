@@ -24,6 +24,7 @@ import {
   reportWindows,
 } from "@/lib/adminReports";
 import { formatInr, formatInrExact } from "@/lib/utils";
+import { LocalTime } from "@/components/shared/LocalTime";
 
 const PAGE_SIZE = 15;
 
@@ -308,7 +309,7 @@ export default async function AdminStoresPage({
                       />
                     </td>
                     <td className="whitespace-nowrap px-5 py-3 text-slate-500">
-                      {reportDateTime(store.createdAt)}
+                      <LocalTime value={store.createdAt.toISOString()} />
                     </td>
                     <td className="px-5 py-3">
                       <div className="flex flex-wrap items-center gap-2">

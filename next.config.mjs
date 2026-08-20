@@ -1,5 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // A dev server holds a lock on .next on Windows, so a verification build can
+  // be pointed elsewhere with NEXT_DIST_DIR instead of stopping it. Unset in
+  // CI and on Railway, where the default applies.
+  ...(process.env.NEXT_DIST_DIR ? { distDir: process.env.NEXT_DIST_DIR } : {}),
   images: {
     remotePatterns: [{ protocol: "https", hostname: "**" }],
   },

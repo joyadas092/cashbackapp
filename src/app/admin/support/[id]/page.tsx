@@ -7,6 +7,7 @@ import { TicketStatusControls } from "@/components/admin/TicketStatusControls";
 import { TicketReplyForm } from "@/components/support/TicketReplyForm";
 import { TICKET_STATUS_META, isTicketOpen } from "@/lib/support";
 import { formatInrExact } from "@/lib/utils";
+import { LocalTime } from "@/components/shared/LocalTime";
 
 function formatDateTime(date: Date): string {
   return date.toLocaleString("en-IN", {
@@ -71,7 +72,7 @@ export default async function AdminTicketPage({ params }: { params: { id: string
           <h1 className="text-2xl font-bold">{ticket.subject}</h1>
           <p className="mt-1 text-sm text-slate-500">
             <span className="font-mono">#{ticket.ticketNumber}</span> · {ticket.category} · raised{" "}
-            {formatDateTime(ticket.createdAt)}
+            <LocalTime value={ticket.createdAt.toISOString()} />
           </p>
         </div>
         <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${meta.tone}`}>
@@ -110,7 +111,7 @@ export default async function AdminTicketPage({ params }: { params: { id: string
                     <span className="font-semibold text-slate-700">
                       {message.isStaffReply ? "Support" : message.author?.name ?? "User"}
                     </span>
-                    {formatDateTime(message.createdAt)}
+                    <LocalTime value={message.createdAt.toISOString()} />
                   </div>
                   <div
                     className={`mt-1 whitespace-pre-line rounded-xl px-4 py-3 text-sm leading-relaxed ${

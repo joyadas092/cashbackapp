@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import { Avatar } from "@/components/shared/Avatar";
 import { TicketReplyForm } from "@/components/support/TicketReplyForm";
 import { TICKET_STATUS_META, isTicketOpen } from "@/lib/support";
+import { LocalTime } from "@/components/shared/LocalTime";
 
 function formatDateTime(date: Date): string {
   return date.toLocaleString("en-IN", {
@@ -61,7 +62,7 @@ export default async function TicketThreadPage({ params }: { params: { id: strin
               {ticket.subject}
             </h1>
             <p className="mt-1 text-sm text-slate-500">
-              {ticket.category} · Raised {formatDateTime(ticket.createdAt)}
+              {ticket.category} · Raised <LocalTime value={ticket.createdAt.toISOString()} />
             </p>
           </div>
           <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${meta.tone}`}>
@@ -95,7 +96,7 @@ export default async function TicketThreadPage({ params }: { params: { id: strin
                   <span className="font-semibold text-slate-600">
                     {isStaff ? "Support Team" : message.author?.name ?? "You"}
                   </span>
-                  {formatDateTime(message.createdAt)}
+                  <LocalTime value={message.createdAt.toISOString()} />
                 </div>
                 <div
                   className={`mt-1 whitespace-pre-line rounded-xl2 px-4 py-3 text-left text-sm leading-relaxed ${

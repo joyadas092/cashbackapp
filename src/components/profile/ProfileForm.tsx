@@ -5,7 +5,12 @@ import { Landmark, ShieldCheck } from "lucide-react";
 
 export interface ProfileFormInitial {
   upiId: string | null;
-  bankDetails: { accountHolder?: string; accountNumber?: string; ifsc?: string } | null;
+  bankDetails: {
+    accountHolder?: string;
+    accountNumber?: string;
+    ifsc?: string;
+    pan?: string;
+  } | null;
   kycStatus: string | null;
 }
 
@@ -18,6 +23,7 @@ export function ProfileForm({ initial }: { initial: ProfileFormInitial }) {
   const [accountHolder, setAccountHolder] = useState(initial.bankDetails?.accountHolder ?? "");
   const [accountNumber, setAccountNumber] = useState(initial.bankDetails?.accountNumber ?? "");
   const [ifsc, setIfsc] = useState(initial.bankDetails?.ifsc ?? "");
+  const [pan, setPan] = useState(initial.bankDetails?.pan ?? "");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
@@ -32,11 +38,12 @@ export function ProfileForm({ initial }: { initial: ProfileFormInitial }) {
       body: JSON.stringify({
         upiId: upiId.trim() || null,
         bankDetails:
-          accountHolder || accountNumber || ifsc
+          accountHolder || accountNumber || ifsc || pan
             ? {
                 accountHolder: accountHolder.trim(),
                 accountNumber: accountNumber.trim(),
                 ifsc: ifsc.trim().toUpperCase(),
+                pan: pan.trim().toUpperCase(),
               }
             : null,
       }),
@@ -128,6 +135,23 @@ export function ProfileForm({ initial }: { initial: ProfileFormInitial }) {
                 placeholder="ABCD0123456"
                 className={`${field} uppercase`}
               />
+            </div>
+            <div>
+              <label htmlFor="pay-pan" className={label}>
+                PAN
+              </label>
+              <input
+                id="pay-pan"
+                value={pan}
+                onChange={(e) => setPan(e.target.value)}
+                placeholder="ABCDE1234F"
+                maxLength={10}
+                aria-describedby="pay-pan-help"
+                className={`${field} uppercase`}
+              />
+              <p id="pay-pan-help" className="mt-1 text-xs text-slate-400">
+                Needed for TDS on larger withdrawals. Optional below that limit.
+              </p>
             </div>
           </div>
         </div>

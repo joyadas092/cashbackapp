@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { getCuelinksClient } from "@/lib/cuelinks";
 import { buildSubIds } from "@/lib/attribution/subid";
+import { buildTrackingUrl } from "@/lib/cuelinks/trackingUrl";
 
 /**
  * Spec section 47 (profit-link variant): resolves the ProfitLink, records a
@@ -34,11 +35,19 @@ export async function GET(req: NextRequest, { params }: { params: { code: string
     profitLinkId: profitLink.id,
   });
 
-  const conversion = await cuelinks.convertLink({
-    destinationUrl: profitLink.destinationUrl,
-    campaignId: profitLink.campaign?.cuelinksCampaignId,
-    ...subIds,
-  });
+  // Build the tracking URL locally when we can. Awaiting Cuelinks' convert API
+  // on every click put a network round-trip between the click and the
+  // merchant's page, which is the slowest possible place to spend time.
+  const local = buildTrackingUrl(profitLink.destinationUrl, subIds);
+  const trackingUrl =
+    local ??
+    (
+      await cuelinks.convertLink({
+        destinationUrl: profitLink.destinationUrl,
+        campaignId: profitLink.campaign?.cuelinksCampaignId,
+        ...subIds,
+      })
+    ).trackingUrl;
 
   await prisma.$transaction([
     prisma.click.create({
@@ -50,7 +59,7 @@ export async function GET(req: NextRequest, { params }: { params: { code: string
         clickType: "PROFIT_LINK",
         profitLinkId: profitLink.id,
         originalUrl: profitLink.originalUrl,
-        trackingUrl: conversion.trackingUrl,
+        trackingUrl,
         subid: subIds.subid,
         subid2: subIds.subid2,
         subid3: subIds.subid3,
@@ -64,5 +73,5 @@ export async function GET(req: NextRequest, { params }: { params: { code: string
     }),
   ]);
 
-  return NextResponse.redirect(conversion.trackingUrl);
+  return NextResponse.redirect(trackingUrl);
 }

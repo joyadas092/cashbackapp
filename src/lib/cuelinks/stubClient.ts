@@ -1,4 +1,4 @@
-import type { CuelinksClient } from "./client.interface";
+import type { CampaignPage, CuelinksClient, ListCampaignsParams } from "./client.interface";
 import type {
   CuelinksCampaign,
   CuelinksTransaction,
@@ -43,8 +43,23 @@ const STUB_CAMPAIGNS: CuelinksCampaign[] = [
 ];
 
 export const stubClient: CuelinksClient = {
-  async listCampaigns(): Promise<CuelinksCampaign[]> {
-    return STUB_CAMPAIGNS;
+  async listCampaigns(params: ListCampaignsParams = {}): Promise<CampaignPage> {
+    const perPage = Math.max(1, params.perPage ?? 60);
+    const page = Math.max(1, params.page ?? 1);
+
+    const matching = params.q
+      ? STUB_CAMPAIGNS.filter((c) =>
+          c.name.toLowerCase().includes(params.q!.toLowerCase())
+        )
+      : STUB_CAMPAIGNS;
+
+    return {
+      campaigns: matching.slice((page - 1) * perPage, page * perPage),
+      page,
+      perPage,
+      total: matching.length,
+      totalPages: Math.max(1, Math.ceil(matching.length / perPage)),
+    };
   },
 
   async getCampaign(campaignId: string): Promise<CuelinksCampaign | null> {

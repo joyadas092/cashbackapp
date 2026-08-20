@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { getCuelinksClient } from "@/lib/cuelinks";
 import { buildSubIds } from "@/lib/attribution/subid";
+import { buildTrackingUrl } from "@/lib/cuelinks/trackingUrl";
 
 /**
  * Spec section 47: the frontend never talks to Cuelinks directly — it hits
@@ -37,7 +38,22 @@ export async function GET(
   const session = await auth();
   const userId = session?.user?.id ?? null;
   const campaign = store.campaigns[0];
-  const destinationUrl = `https://${store.slug}.example-merchant.invalid/`; // placeholder until real merchant URLs are configured per store
+
+  // Where the shopper actually lands. An explicit homepageUrl wins; otherwise
+  // fall back to the first merchant domain. If a store has neither, refuse —
+  // recording a click and sending someone to a fabricated domain is worse than
+  // an honest error, and that is exactly what the old
+  // `${slug}.example-merchant.invalid` placeholder did.
+  const destinationUrl =
+    store.homepageUrl?.trim() ||
+    (store.merchantDomains[0] ? `https://${store.merchantDomains[0]}/` : null);
+
+  if (!destinationUrl) {
+    return NextResponse.json(
+      { error: "This store has no destination URL configured yet." },
+      { status: 503 }
+    );
+  }
 
   if (intent === "cashback" && !userId) {
     // Should not normally be reached — LoginPromptModal intercepts client-side —
@@ -52,11 +68,18 @@ export async function GET(
       ? buildSubIds({ clickId, userId, linkType: "direct_cashback" })
       : {};
 
-  const conversion = await cuelinks.convertLink({
-    destinationUrl,
-    campaignId: campaign?.cuelinksCampaignId,
-    ...subIds,
-  });
+  // Local build first — see src/lib/cuelinks/trackingUrl.ts on why this is not
+  // an API call per click.
+  const local = buildTrackingUrl(destinationUrl, subIds);
+  const trackingUrl =
+    local ??
+    (
+      await cuelinks.convertLink({
+        destinationUrl,
+        campaignId: campaign?.cuelinksCampaignId,
+        ...subIds,
+      })
+    ).trackingUrl;
 
   await prisma.click.create({
     data: {
@@ -66,7 +89,7 @@ export async function GET(
       campaignId: campaign?.id,
       clickType: intent === "cashback" ? "DIRECT_CASHBACK" : "VISIT_STORE",
       originalUrl: destinationUrl,
-      trackingUrl: conversion.trackingUrl,
+      trackingUrl,
       subid: subIds.subid,
       subid2: subIds.subid2,
       subid3: subIds.subid3,
@@ -75,5 +98,5 @@ export async function GET(
     },
   });
 
-  return NextResponse.redirect(conversion.trackingUrl);
+  return NextResponse.redirect(trackingUrl);
 }

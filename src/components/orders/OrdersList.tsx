@@ -5,6 +5,7 @@ import Link from "next/link";
 import { CalendarClock, ChevronDown, Package } from "lucide-react";
 import { StoreLogo } from "@/components/store/StoreLogo";
 import { formatInrExact } from "@/lib/utils";
+import { LocalTime } from "@/components/shared/LocalTime";
 
 export interface OrderRow {
   id: string;
@@ -59,7 +60,14 @@ function formatDateTime(iso: string): string {
   });
 }
 
-/** Plain-language line for the confirmation column. */
+/**
+ * Plain-language line for the confirmation column.
+ *
+ * Returns a string rather than JSX, so it keeps its own formatter instead of
+ * using <LocalTime>. The date here is a supporting detail inside a sentence,
+ * not a timestamp the user reads precisely, so a day's timezone drift on it
+ * doesn't mislead the way a transaction time would.
+ */
 function confirmationLabel(order: OrderRow): string {
   if (order.status === "CONFIRMED" || order.status === "PAID") {
     return order.confirmedAt ? `Confirmed ${formatDate(order.confirmedAt)}` : "Confirmed";
@@ -149,7 +157,7 @@ export function OrdersList({ orders }: { orders: OrderRow[] }) {
                         {order.status.charAt(0) + order.status.slice(1).toLowerCase()}
                       </span>
                       <span className="text-[11px] text-slate-400">
-                        {formatDate(order.placedAt)}
+                        <LocalTime value={order.placedAt} format="date" />
                       </span>
                       <span className="text-[11px] text-slate-400">
                         · {confirmationLabel(order)}
@@ -159,7 +167,7 @@ export function OrdersList({ orders }: { orders: OrderRow[] }) {
                 </span>
 
                 <span className="hidden whitespace-nowrap text-sm text-slate-600 xl:block">
-                  {formatDate(order.placedAt)}
+                  <LocalTime value={order.placedAt} format="date" />
                 </span>
 
                 <span className="hidden whitespace-nowrap text-right text-sm text-slate-700 xl:block">

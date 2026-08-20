@@ -41,6 +41,8 @@ export async function GET(req: NextRequest) {
       riskStatus: true,
       referralCode: true,
       createdAt: true,
+      // kycStatus only. Payout details — UPI, account number, PAN — are tax and
+      // financial PII and must never leave through a bulk export.
       profile: { select: { kycStatus: true } },
       wallet: { select: { lifetimeEarned: true, availableBalance: true } },
       _count: { select: { clicks: true, referralsMade: true } },

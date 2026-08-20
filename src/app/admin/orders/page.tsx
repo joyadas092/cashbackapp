@@ -3,6 +3,12 @@ import type { Prisma, TransactionStatus } from "@prisma/client";
 import { CheckCircle2, Clock, IndianRupee, Package, Search, Undo2, XCircle } from "lucide-react";
 import { requireAdminSession } from "@/lib/adminAuth";
 import { prisma } from "@/lib/db";
+import { DateRangeFilter } from "@/components/shared/DateRangeFilter";
+import {
+  dateRangeToParams,
+  dateRangeWhere,
+  parseDateRangeFromSearchParams,
+} from "@/lib/dateRangeFilter";
 import {
   AdminBadge,
   AdminCard,
@@ -22,6 +28,7 @@ import {
   reportWindows,
 } from "@/lib/adminReports";
 import { formatInr, formatInrExact } from "@/lib/utils";
+import { LocalTime } from "@/components/shared/LocalTime";
 
 const PAGE_SIZE = 25;
 
@@ -54,21 +61,31 @@ function dateTime(date: Date): string {
 export default async function AdminOrdersPage({
   searchParams,
 }: {
-  searchParams: { status?: string; q?: string; page?: string };
+  searchParams: Record<string, string | string[] | undefined>;
 }) {
   await requireAdminSession("/admin/orders");
 
-  const filterKey = FILTERS.some((f) => f.key === searchParams.status)
-    ? (searchParams.status as string)
-    : "all";
+  const one = (key: string): string | undefined => {
+    const value = searchParams[key];
+    return Array.isArray(value) ? value[0] : value;
+  };
+
+  const statusParam = one("status");
+  const filterKey = FILTERS.some((f) => f.key === statusParam) ? (statusParam as string) : "all";
   const filter = FILTERS.find((f) => f.key === filterKey)!;
-  const query = (searchParams.q ?? "").trim();
-  const page = Math.max(1, parseInt(searchParams.page ?? "1", 10) || 1);
+  const query = (one("q") ?? "").trim();
+  const page = Math.max(1, parseInt(one("page") ?? "1", 10) || 1);
+
+  const range = parseDateRangeFromSearchParams(searchParams);
+  const createdAtFilter = dateRangeWhere(range);
+  const rangeSuffix = dateRangeToParams(range).toString();
+  const rangeQs = rangeSuffix ? `&${rangeSuffix}` : "";
 
   // Search covers the three things an admin has to hand when chasing an order:
   // the order reference, the store, or who it belongs to.
   const where: Prisma.TransactionWhereInput = {
     ...(filter.statuses ? { status: { in: filter.statuses } } : {}),
+    ...(createdAtFilter ? { createdAt: createdAtFilter } : {}),
     ...(query
       ? {
           OR: [
@@ -107,7 +124,11 @@ export default async function AdminOrdersPage({
       },
     }),
     prisma.transaction.count({ where }),
-    prisma.transaction.groupBy({ by: ["status"], _count: { _all: true } }),
+    prisma.transaction.groupBy({
+      by: ["status"],
+      where: createdAtFilter ? { createdAt: createdAtFilter } : {},
+      _count: { _all: true },
+    }),
     prisma.transaction.aggregate({ _sum: { saleAmount: true } }),
     prisma.transaction.count({ where: { createdAt: inPeriod } }),
     prisma.transaction.count({ where: { createdAt: inPrior } }),
@@ -134,7 +155,7 @@ export default async function AdminOrdersPage({
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const hrefFor = (p: number) =>
-    `/admin/orders?status=${filterKey}${query ? `&q=${encodeURIComponent(query)}` : ""}${p > 1 ? `&page=${p}` : ""}`;
+    `/admin/orders?status=${filterKey}${query ? `&q=${encodeURIComponent(query)}` : ""}${p > 1 ? `&page=${p}` : ""}${rangeQs}`;
 
   // Orders per day against the rupee value they carried.
   const series = buildDualSeries(
@@ -187,6 +208,14 @@ export default async function AdminOrdersPage({
         actions={
           <form action="/admin/orders" className="relative">
             <input type="hidden" name="status" value={filterKey} />
+            {range.preset === "custom" ? (
+              <>
+                <input type="hidden" name="from" value={range.from} />
+                <input type="hidden" name="to" value={range.to} />
+              </>
+            ) : (
+              range.preset !== "all" && <input type="hidden" name="range" value={range.preset} />
+            )}
             <Search
               size={15}
               strokeWidth={2}
@@ -218,7 +247,7 @@ export default async function AdminOrdersPage({
             return (
               <Link
                 key={f.key}
-                href={`/admin/orders?status=${f.key}${query ? `&q=${encodeURIComponent(query)}` : ""}`}
+                href={`/admin/orders?status=${f.key}${query ? `&q=${encodeURIComponent(query)}` : ""}${rangeQs}`}
                 aria-current={isActive ? "page" : undefined}
                 className={`-mb-px shrink-0 whitespace-nowrap border-b-2 px-3 py-3.5 text-sm font-semibold transition-colors ${
                   isActive
@@ -231,6 +260,26 @@ export default async function AdminOrdersPage({
             );
           })}
         </nav>
+
+        {/* GET form so the range stays in the URL and Export reuses the same query. */}
+        <form
+          action="/admin/orders"
+          className="flex flex-wrap items-center gap-2 border-b border-slate-200 bg-slate-50/60 px-4 py-3 sm:px-5"
+        >
+          <input type="hidden" name="status" value={filterKey} />
+          {query && <input type="hidden" name="q" value={query} />}
+          <DateRangeFilter
+            range={range}
+            basePath="/admin/orders"
+            hiddenFields={{ status: filterKey, q: query }}
+          />
+          <button
+            type="submit"
+            className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-slate-700"
+          >
+            Apply
+          </button>
+        </form>
 
         {orders.length === 0 ? (
           <AdminEmpty
@@ -297,7 +346,7 @@ export default async function AdminOrdersPage({
                     />
                   </td>
                   <td className="whitespace-nowrap px-5 py-3 text-slate-500">
-                    {dateTime(order.createdAt)}
+                    <LocalTime value={order.createdAt.toISOString()} />
                   </td>
                 </tr>
               ))}

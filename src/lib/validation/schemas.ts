@@ -163,6 +163,16 @@ export const passwordChangeSchema = z
   });
 export type PasswordChangeInput = z.infer<typeof passwordChangeSchema>;
 
+/** Indian PAN: five letters, four digits, one letter. */
+export const PAN_PATTERN = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
+
+/** Show only the first five and last character — PAN is tax PII. */
+export function maskPan(pan: string | null | undefined): string {
+  const value = (pan ?? "").trim().toUpperCase();
+  if (!PAN_PATTERN.test(value)) return "—";
+  return `${value.slice(0, 5)}****${value.slice(-1)}`;
+}
+
 export const profileUpdateSchema = z.object({
   upiId: z.string().max(100).nullable().optional(),
   bankDetails: z
@@ -170,6 +180,19 @@ export const profileUpdateSchema = z.object({
       accountHolder: z.string().max(100).optional(),
       accountNumber: z.string().max(30).optional(),
       ifsc: z.string().max(20).optional(),
+      /**
+       * PAN, needed for TDS once payouts pass the threshold in settings.
+       * Uppercased before validating so a lowercase entry isn't rejected for
+       * casing alone. Empty string means "not provided" rather than invalid.
+       */
+      pan: z
+        .string()
+        .trim()
+        .transform((value) => value.toUpperCase())
+        .refine((value) => value === "" || PAN_PATTERN.test(value), {
+          message: "Enter a valid PAN, e.g. ABCDE1234F",
+        })
+        .optional(),
     })
     .nullable()
     .optional(),

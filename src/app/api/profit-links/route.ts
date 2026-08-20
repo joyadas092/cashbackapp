@@ -6,6 +6,7 @@ import { createProfitLinkSchema } from "@/lib/validation/schemas";
 import { validateMerchantUrl } from "@/lib/security/urlValidator";
 import { generateShortCode } from "@/lib/shortcode";
 import { getSetting } from "@/lib/settings";
+import { siteUrl } from "@/lib/siteUrl";
 
 const PAGE_SIZE = 10;
 
@@ -66,7 +67,9 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  const shareUrl = new URL(`/p/${profitLink.code}`, req.url).toString();
+  // siteUrl(), not req.url: behind Railway's proxy req.url carries the internal
+  // address, which is how shared links ended up reading localhost:8080.
+  const shareUrl = `${siteUrl()}/p/${profitLink.code}`;
 
   return NextResponse.json(
     {
@@ -151,7 +154,7 @@ export async function GET(req: NextRequest) {
     items: items.map((link) => ({
       id: link.id,
       code: link.code,
-      shareUrl: new URL(`/p/${link.code}`, req.url).toString(),
+      shareUrl: `${siteUrl()}/p/${link.code}`,
       originalUrl: link.originalUrl,
       clickCount: link.clickCount,
       status: link.status,

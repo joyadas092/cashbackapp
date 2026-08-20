@@ -285,6 +285,11 @@ model Store {
   couponVisible       Boolean      @default(false) @map("coupon_visible")
   cuelinksCampaignId  String?      @map("cuelinks_campaign_id")
   merchantDomains     String[]     @default([]) @map("merchant_domains")
+  /// Where /go sends a shopper. Separate from merchantDomains, which is the
+  /// allowlist used to validate pasted profit-link URLs — a store may accept
+  /// links from several domains but should still have one canonical landing
+  /// page, and an admin may want to point it at a campaign page instead.
+  homepageUrl         String?      @map("homepage_url")
   seoTitle            String?      @map("seo_title")
   seoDescription      String?      @map("seo_description")
 

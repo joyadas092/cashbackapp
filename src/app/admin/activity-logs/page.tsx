@@ -10,6 +10,7 @@ import {
   AdminTh,
 } from "@/components/admin/ui";
 import { Avatar } from "@/components/shared/Avatar";
+import { LocalTime } from "@/components/shared/LocalTime";
 
 const PAGE_SIZE = 40;
 
@@ -103,7 +104,7 @@ export default async function AdminActivityLogsPage({
               {logs.map((log) => (
                 <tr key={log.id} className="hover:bg-slate-50/60">
                   <td className="whitespace-nowrap px-5 py-3 text-slate-500">
-                    {dateTime(log.createdAt)}
+                    <LocalTime value={log.createdAt.toISOString()} />
                   </td>
                   <td className="px-5 py-3">
                     {log.actor ? (

@@ -24,6 +24,7 @@ import {
   userFiltersToQuery,
 } from "@/lib/adminUserFilters";
 import { formatInrExact } from "@/lib/utils";
+import { LocalTime } from "@/components/shared/LocalTime";
 
 const PAGE_SIZE = 15;
 const WINDOW_DAYS = 15;
@@ -335,7 +336,7 @@ export default async function AdminUsersPage({
                         {ordersByUser.get(user.id) ?? 0}
                       </td>
                       <td className="whitespace-nowrap px-5 py-3 text-slate-500">
-                        {dateTime(user.createdAt)}
+                        <LocalTime value={user.createdAt.toISOString()} />
                       </td>
                       <td className="px-5 py-3">
                         <UserRowActions

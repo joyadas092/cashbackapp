@@ -15,6 +15,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { HelpSearch } from "@/components/support/HelpSearch";
 import { TICKET_STATUS_META } from "@/lib/support";
+import { LocalTime } from "@/components/shared/LocalTime";
 
 function formatDateTime(date: Date): string {
   return date.toLocaleString("en-IN", {
@@ -388,7 +389,7 @@ export default async function HelpPage() {
                         </span>
                       </td>
                       <td className="whitespace-nowrap px-5 py-3 text-slate-500">
-                        {formatDateTime(ticket.updatedAt)}
+                        <LocalTime value={ticket.updatedAt.toISOString()} />
                       </td>
                       <td className="px-5 py-3 text-right">
                         <Link

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown, Receipt } from "lucide-react";
 import { formatInrExact } from "@/lib/utils";
+import { LocalTime } from "@/components/shared/LocalTime";
 
 interface LedgerRow {
   id: string;
@@ -178,7 +179,7 @@ export function WalletLedger({ pendingWithdrawalIds }: { pendingWithdrawalIds: s
                     className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-5 py-3.5 text-left transition-colors hover:bg-slate-50/60 lg:grid-cols-[180px_minmax(0,1fr)_150px_140px_130px_40px]"
                   >
                     <span className="order-2 text-xs text-slate-500 lg:order-none lg:text-sm">
-                      {formatDateTime(row.createdAt)}
+                      <LocalTime value={row.createdAt} format="datetime" />
                     </span>
 
                     <span className="order-1 min-w-0 lg:order-none">

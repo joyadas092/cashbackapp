@@ -1,4 +1,4 @@
-import type { CuelinksClient } from "./client.interface";
+import type { CampaignPage, CuelinksClient, ListCampaignsParams } from "./client.interface";
 import type {
   CuelinksCampaign,
   CuelinksTransaction,
@@ -68,6 +68,13 @@ interface CampaignsListResponse {
     payout_type?: string;
     payout: string;
   }>;
+  /** Present on list endpoints; absent on the search-by-id path. */
+  meta?: {
+    page: number;
+    per_page: number;
+    total: number;
+    total_pages: number;
+  };
 }
 
 interface TransactionsListResponse {
@@ -86,17 +93,32 @@ interface TransactionsListResponse {
 }
 
 export const realClient: CuelinksClient = {
-  async listCampaigns(): Promise<CuelinksCampaign[]> {
-    const res = await cuelinksFetch<CampaignsListResponse>("/campaigns");
-    return res.data.map((c) => ({
-      campaignId: String(c.id),
-      name: c.name,
-      status: c.access_status === "approved" ? "active" : "inactive",
-      imageUrl: c.image ?? undefined,
-      domain: c.domain,
-      payoutType: c.payout_type,
-      payout: c.payout,
-    }));
+  async listCampaigns(params: ListCampaignsParams = {}): Promise<CampaignPage> {
+    const page = Math.max(1, params.page ?? 1);
+    // 100 is Cuelinks' documented maximum per page (500 for search); asking for
+    // a page size at all is the fix — the default returns a couple of dozen.
+    const perPage = Math.min(100, Math.max(1, params.perPage ?? 60));
+
+    const query = new URLSearchParams({ page: String(page), per_page: String(perPage) });
+    if (params.q) query.set("q", params.q);
+
+    const res = await cuelinksFetch<CampaignsListResponse>(`/campaigns?${query.toString()}`);
+
+    return {
+      campaigns: res.data.map((c) => ({
+        campaignId: String(c.id),
+        name: c.name,
+        status: c.access_status === "approved" ? "active" : "inactive",
+        imageUrl: c.image ?? undefined,
+        domain: c.domain,
+        payoutType: c.payout_type,
+        payout: c.payout,
+      })),
+      page: res.meta?.page ?? page,
+      perPage: res.meta?.per_page ?? perPage,
+      total: res.meta?.total ?? res.data.length,
+      totalPages: res.meta?.total_pages ?? 1,
+    };
   },
 
   async getCampaign(campaignId: string): Promise<CuelinksCampaign | null> {

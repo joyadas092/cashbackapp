@@ -3,6 +3,7 @@ import type { TicketStatus } from "@prisma/client";
 import { requireAdminSession } from "@/lib/adminAuth";
 import { prisma } from "@/lib/db";
 import { TICKET_STATUS_META } from "@/lib/support";
+import { LocalTime } from "@/components/shared/LocalTime";
 
 const PAGE_SIZE = 25;
 
@@ -163,7 +164,7 @@ export default async function AdminSupportPage({
                       </span>
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-slate-500">
-                      {formatDateTime(ticket.updatedAt)}
+                      <LocalTime value={ticket.updatedAt.toISOString()} />
                     </td>
                   </tr>
                 );

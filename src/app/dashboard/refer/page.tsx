@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { headers } from "next/headers";
 import {
   ArrowUpRight,
   Gift,
@@ -23,6 +22,7 @@ import {
   type ReferredUserStatus,
 } from "@/components/referral/ReferredUsersTable";
 import { formatInrExact } from "@/lib/utils";
+import { siteUrl } from "@/lib/siteUrl";
 
 /** How many referred users the table loads. Everything above this is counted, not listed. */
 const TABLE_LIMIT = 100;
@@ -162,9 +162,9 @@ export default async function ReferPage() {
     };
   });
 
-  const host = headers().get("host") ?? "localhost:3000";
-  const protocol = host.startsWith("localhost") ? "http" : "https";
-  const shareUrl = `${protocol}://${host}/refer/${user.referralCode}`;
+  // siteUrl(), not the host header: behind Railway's proxy that header carries
+  // the internal address, which is how shared links ended up on localhost.
+  const shareUrl = `${siteUrl()}/refer/${user.referralCode}`;
 
   const confirmed = Number(confirmedAgg._sum.amount ?? 0);
   const reversed = Number(reversedAgg._sum.amount ?? 0);

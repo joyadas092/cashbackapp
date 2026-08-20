@@ -52,28 +52,106 @@ export function CampaignBrowser({
   const [error, setError] = useState<string | null>(null);
   const [openPanel, setOpenPanel] = useState<{ campaignId: string; mode: "link" | "create" } | null>(null);
 
-  async function loadCampaigns() {
+  // Cuelinks returns campaigns a page at a time and the account carries
+  // hundreds, so the browser pages and searches rather than showing whatever
+  // the first response happened to contain.
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [query, setQuery] = useState("");
+  const [submittedQuery, setSubmittedQuery] = useState("");
+
+  async function loadCampaigns(targetPage = page, search = submittedQuery) {
     setError(null);
     setCampaigns(null);
-    const res = await fetch("/api/admin/cuelinks/campaigns");
+
+    const params = new URLSearchParams({ page: String(targetPage) });
+    if (search) params.set("q", search);
+
+    const res = await fetch(`/api/admin/cuelinks/campaigns?${params.toString()}`);
     const body = await res.json().catch(() => ({}));
     if (!res.ok) {
       setError(body.error ?? "Failed to load campaigns");
       return;
     }
     setCampaigns(body.campaigns);
+    setTotalPages(body.totalPages ?? 1);
+    setTotal(body.total ?? body.campaigns.length);
   }
 
   useEffect(() => {
-    loadCampaigns();
+    loadCampaigns(page, submittedQuery);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [page, submittedQuery]);
+
+  const controls = (
+    <div className="mb-4 flex flex-wrap items-center gap-2">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          setPage(1);
+          setSubmittedQuery(query.trim());
+        }}
+        className="flex min-w-[220px] flex-1 gap-2"
+      >
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search campaigns by name..."
+          aria-label="Search campaigns"
+          className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-violet-400"
+        />
+        <button
+          type="submit"
+          className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+        >
+          Search
+        </button>
+        {submittedQuery && (
+          <button
+            type="button"
+            onClick={() => {
+              setQuery("");
+              setSubmittedQuery("");
+              setPage(1);
+            }}
+            className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+          >
+            Clear
+          </button>
+        )}
+      </form>
+
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-slate-500">
+          {total > 0 ? `${total} campaigns` : ""}
+          {totalPages > 1 ? ` · page ${page} of ${totalPages}` : ""}
+        </span>
+        <button
+          type="button"
+          disabled={page <= 1}
+          onClick={() => setPage((p) => Math.max(1, p - 1))}
+          className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+        >
+          Previous
+        </button>
+        <button
+          type="button"
+          disabled={page >= totalPages}
+          onClick={() => setPage((p) => p + 1)}
+          className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+        >
+          Next
+        </button>
+      </div>
+    </div>
+  );
 
   if (error) {
     return (
       <Card className="p-6 text-center">
         <p className="text-sm text-red-600">{error}</p>
-        <Button variant="outline" size="sm" className="mt-3" onClick={loadCampaigns}>
+        <Button variant="outline" size="sm" className="mt-3" onClick={() => loadCampaigns()}>
           Retry
         </Button>
       </Card>
@@ -81,11 +159,22 @@ export function CampaignBrowser({
   }
 
   if (!campaigns) {
-    return <p className="text-sm text-slate-500">Loading campaigns from Cuelinks...</p>;
+    return (
+      <div>
+        {controls}
+        <p className="text-sm text-slate-500">Loading campaigns from Cuelinks...</p>
+      </div>
+    );
   }
 
   return (
     <div className="flex flex-col gap-3">
+      {controls}
+      {campaigns.length === 0 && (
+        <p className="rounded-xl border border-dashed border-slate-200 px-4 py-8 text-center text-sm text-slate-500">
+          No campaigns match “{submittedQuery}”.
+        </p>
+      )}
       {campaigns.map((c) => (
         <Card key={c.campaignId} className="p-4">
           <div className="flex items-center gap-3">

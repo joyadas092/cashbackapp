@@ -1,7 +1,16 @@
 import Link from "next/link";
-import { CheckCircle2, Clock, Link2, MousePointerClick, Package, Users } from "lucide-react";
+import { CheckCircle2, Clock, Link2, MousePointerClick, Package, Search, Users } from "lucide-react";
 import { requireAdminSession } from "@/lib/adminAuth";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { siteUrl } from "@/lib/siteUrl";
+import { DateRangeFilter } from "@/components/shared/DateRangeFilter";
+import {
+  dateRangeToParams,
+  dateRangeWhere,
+  isDateRangeActive,
+  parseDateRangeFromSearchParams,
+} from "@/lib/dateRangeFilter";
 import {
   AdminBadge,
   AdminCard,
@@ -22,8 +31,10 @@ import {
   reportWindows,
 } from "@/lib/adminReports";
 import { formatInr, formatInrExact } from "@/lib/utils";
+import { LocalTime } from "@/components/shared/LocalTime";
 
 const PAGE_SIZE = 15;
+const LINK_PAGE_SIZE = 20;
 
 /**
  * Share & Earn reporting.
@@ -38,14 +49,43 @@ const PAGE_SIZE = 15;
 export default async function AdminAffiliatePage({
   searchParams,
 }: {
-  searchParams: { page?: string };
+  searchParams: Record<string, string | string[] | undefined>;
 }) {
   await requireAdminSession("/admin/affiliate");
 
-  const page = Math.max(1, parseInt(searchParams.page ?? "1", 10) || 1);
+  const one = (key: string): string | undefined => {
+    const value = searchParams[key];
+    return Array.isArray(value) ? value[0] : value;
+  };
+
+  const page = Math.max(1, parseInt(one("page") ?? "1", 10) || 1);
+  // The two tables page independently, so the links table has its own param.
+  const linkPage = Math.max(1, parseInt(one("lpage") ?? "1", 10) || 1);
+  const query = (one("q") ?? "").trim();
+
+  // The range applies to the Profit Links table (by link creation date) and to
+  // the recent-activity rollups. The stat strip stays on its own rolling
+  // window, which is what its "vs prev 30 days" delta is measured against.
+  const range = parseDateRangeFromSearchParams(searchParams);
+  const createdAtFilter = dateRangeWhere(range);
+
   const { inPeriod, inPrior } = reportWindows();
 
-  const affiliateFilter = { profitLinks: { some: {} } };
+  const userMatch = query
+    ? {
+        OR: [
+          { name: { contains: query, mode: "insensitive" as const } },
+          { email: { contains: query, mode: "insensitive" as const } },
+        ],
+      }
+    : {};
+
+  const affiliateFilter = { profitLinks: { some: {} }, ...userMatch };
+
+  const linkWhere: Prisma.ProfitLinkWhereInput = {
+    ...(createdAtFilter ? { createdAt: createdAtFilter } : {}),
+    ...(query ? { user: userMatch } : {}),
+  };
   const profitClick = { clickType: "PROFIT_LINK" as const };
 
   const [
@@ -67,7 +107,8 @@ export default async function AdminAffiliatePage({
     reversedAgg,
     seriesClicks,
     seriesEarnings,
-    recentAffiliates,
+    linkRowsPage,
+    linkTotal,
     linkCount,
   ] = await Promise.all([
     prisma.user.findMany({
@@ -129,16 +170,19 @@ export default async function AdminAffiliatePage({
       select: { createdAt: true, profitLinkAmount: true },
     }),
     prisma.profitLink.findMany({
+      where: linkWhere,
       orderBy: { createdAt: "desc" },
-      take: 5,
+      skip: (linkPage - 1) * LINK_PAGE_SIZE,
+      take: LINK_PAGE_SIZE,
       select: {
         id: true,
         code: true,
         createdAt: true,
         user: { select: { id: true, name: true, email: true } },
-        store: { select: { name: true } },
+        store: { select: { name: true, slug: true } },
       },
     }),
+    prisma.profitLink.count({ where: linkWhere }),
     prisma.profitLink.count(),
   ]);
 
@@ -175,6 +219,45 @@ export default async function AdminAffiliatePage({
         })
       : Promise.resolve([]),
   ]);
+
+  // Per-link rollups for the Profit Links table. Clicks come from Click grouped
+  // by profitLinkId rather than ProfitLink.clickCount, which is a cached counter
+  // and can drift; a report should read the source of truth.
+  const pageLinkIds = linkRowsPage.map((link) => link.id);
+  const [linkClickRows, linkTxRows] = await Promise.all([
+    pageLinkIds.length > 0
+      ? prisma.click.groupBy({
+          by: ["profitLinkId"],
+          where: { profitLinkId: { in: pageLinkIds } },
+          _count: { _all: true },
+        })
+      : Promise.resolve([]),
+    pageLinkIds.length > 0
+      ? prisma.transaction.findMany({
+          where: { click: { profitLinkId: { in: pageLinkIds } } },
+          select: {
+            profitLinkAmount: true,
+            click: { select: { profitLinkId: true } },
+          },
+        })
+      : Promise.resolve([]),
+  ]);
+
+  const clicksByLink = new Map<string, number>();
+  for (const row of linkClickRows) {
+    if (row.profitLinkId) clicksByLink.set(row.profitLinkId, row._count._all);
+  }
+
+  const ordersByLink = new Map<string, number>();
+  const commissionByLink = new Map<string, number>();
+  for (const row of linkTxRows) {
+    const id = row.click.profitLinkId;
+    if (!id) continue;
+    ordersByLink.set(id, (ordersByLink.get(id) ?? 0) + 1);
+    commissionByLink.set(id, (commissionByLink.get(id) ?? 0) + Number(row.profitLinkAmount));
+  }
+
+  const shareBase = siteUrl();
 
   const linksByUser = new Map<string, number>();
   for (const row of linkRows) linksByUser.set(row.userId, (linksByUser.get(row.userId) ?? 0) + 1);
@@ -228,11 +311,22 @@ export default async function AdminAffiliatePage({
     .filter((row): row is { user: (typeof affiliates)[number]; amount: number } => Boolean(row.user));
 
   const totalPages = Math.max(1, Math.ceil(totalAffiliates / PAGE_SIZE));
+  const linkTotalPages = Math.max(1, Math.ceil(linkCount / LINK_PAGE_SIZE));
+
+  const buildHref = (overrides: Record<string, string | number>) => {
+    const params = new URLSearchParams();
+    if (query) params.set("q", query);
+    dateRangeToParams(range, params);
+    if (page > 1) params.set("page", String(page));
+    if (linkPage > 1) params.set("lpage", String(linkPage));
+    for (const [key, value] of Object.entries(overrides)) params.set(key, String(value));
+    return `/admin/affiliate?${params.toString()}`;
+  };
   const num = (value: unknown) => Number(value ?? 0);
 
   const stats = [
     { label: "Affiliates", value: String(totalAffiliates), icon: Users, tone: "bg-violet-50 text-violet-600", delta: reportDelta(affiliatesPeriod, affiliatesPrior) },
-    { label: "Profit Links", value: String(linkCount), icon: Link2, tone: "bg-sky-50 text-sky-600", delta: null },
+    { label: "Profit Links", value: String(linkTotal), icon: Link2, tone: "bg-sky-50 text-sky-600", delta: null },
     { label: "Link Clicks", value: String(clicksTotal), icon: MousePointerClick, tone: "bg-indigo-50 text-indigo-600", delta: reportDelta(clicksPeriod, clicksPrior) },
     { label: "Orders", value: String(ordersTotal), icon: Package, tone: "bg-cashlime-50 text-cashlime-700", delta: reportDelta(ordersPeriod, ordersPrior) },
     {
@@ -350,7 +444,7 @@ export default async function AdminAffiliatePage({
             totalPages={totalPages}
             total={totalAffiliates}
             noun="affiliates"
-            hrefForPage={(target) => `/admin/affiliate?page=${target}`}
+            hrefForPage={(target) => buildHref({ page: target })}
           />
         </AdminCard>
 
@@ -404,49 +498,139 @@ export default async function AdminAffiliatePage({
         </aside>
       </div>
 
-      <AdminCard title="Recent Profit Links" className="mt-6" padded={false}>
-        <div className="mt-4">
-          {recentAffiliates.length === 0 ? (
-            <AdminEmpty title="No profit links created yet" />
+      <AdminCard title="Profit Links" className="mt-6" padded={false}>
+        {/* GET form so a filtered report stays a shareable URL. */}
+        <form
+          action="/admin/affiliate"
+          className="flex flex-wrap items-center gap-2 border-b border-slate-200 bg-slate-50/60 px-4 py-3 sm:px-5"
+        >
+          <div className="relative min-w-[220px] flex-1">
+            <Search
+              size={15}
+              strokeWidth={2}
+              className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+            />
+            <input
+              type="search"
+              name="q"
+              defaultValue={query}
+              placeholder="Filter by affiliate name or email..."
+              aria-label="Filter by user"
+              className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-violet-400"
+            />
+          </div>
+
+          <DateRangeFilter range={range} basePath="/admin/affiliate" hiddenFields={{ q: query }} />
+
+          <button
+            type="submit"
+            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+          >
+            Apply
+          </button>
+
+          {(query || isDateRangeActive(range)) && (
+            <Link
+              href="/admin/affiliate"
+              className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+            >
+              Clear
+            </Link>
+          )}
+        </form>
+
+        <div>
+          {linkRowsPage.length === 0 ? (
+            <AdminEmpty
+              title={
+                query || isDateRangeActive(range)
+                  ? "No profit links match this filter"
+                  : "No profit links created yet"
+              }
+              body={
+                query || isDateRangeActive(range)
+                  ? "Try a different name, email or date range."
+                  : undefined
+              }
+            />
           ) : (
-            <AdminTableWrap minWidth={680}>
+            <AdminTableWrap minWidth={1120}>
               <thead>
                 <tr className="border-b border-slate-100">
                   <AdminTh>Affiliate</AdminTh>
                   <AdminTh>Store</AdminTh>
-                  <AdminTh>Link Code</AdminTh>
+                  <AdminTh>Link</AdminTh>
+                  <AdminTh align="right">Clicks</AdminTh>
+                  <AdminTh align="right">Orders</AdminTh>
+                  <AdminTh align="right">Conversion</AdminTh>
+                  <AdminTh align="right">Commission</AdminTh>
                   <AdminTh>Created</AdminTh>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {recentAffiliates.map((link) => (
-                  <tr key={link.id} className="hover:bg-slate-50/60">
-                    <td className="px-5 py-3">
-                      <Link
-                        href={`/admin/users/${link.user.id}`}
-                        className="flex items-center gap-2.5 hover:text-violet-700"
-                      >
-                        <Avatar name={link.user.name} seed={link.user.id} size={28} />
-                        <span className="min-w-0">
-                          <span className="block truncate text-slate-800">{link.user.name}</span>
-                          <span className="block truncate text-xs text-slate-400">
-                            {link.user.email}
+                {linkRowsPage.map((link) => {
+                  const clicks = clicksByLink.get(link.id) ?? 0;
+                  const orders = ordersByLink.get(link.id) ?? 0;
+                  // Undefined, not zero, when nobody has clicked — a 0.00%
+                  // conversion rate on zero clicks is a made-up number.
+                  const conversion = clicks > 0 ? (orders / clicks) * 100 : null;
+                  const shareUrl = `${shareBase}/p/${link.code}`;
+
+                  return (
+                    <tr key={link.id} className="hover:bg-slate-50/60">
+                      <td className="px-5 py-3">
+                        <Link
+                          href={`/admin/users/${link.user.id}`}
+                          className="flex items-center gap-2.5 hover:text-violet-700"
+                        >
+                          <Avatar name={link.user.name} seed={link.user.id} size={28} />
+                          <span className="min-w-0">
+                            <span className="block truncate text-slate-800">{link.user.name}</span>
+                            <span className="block truncate text-xs text-slate-400">
+                              {link.user.email}
+                            </span>
                           </span>
-                        </span>
-                      </Link>
-                    </td>
-                    <td className="px-5 py-3 text-slate-600">{link.store.name}</td>
-                    <td className="px-5 py-3 font-mono text-xs text-slate-600">{link.code}</td>
-                    <td className="whitespace-nowrap px-5 py-3 text-slate-500">
-                      {reportDateTime(link.createdAt)}
-                    </td>
-                  </tr>
-                ))}
+                        </Link>
+                      </td>
+                      <td className="px-5 py-3 text-slate-600">{link.store.name}</td>
+                      <td className="px-5 py-3">
+                        <a
+                          href={shareUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="break-all font-mono text-xs text-violet-700 hover:underline"
+                        >
+                          {shareUrl}
+                        </a>
+                      </td>
+                      <td className="px-5 py-3 text-right text-slate-600">{clicks}</td>
+                      <td className="px-5 py-3 text-right text-slate-600">{orders}</td>
+                      <td className="px-5 py-3 text-right text-slate-600">
+                        {conversion === null ? "—" : `${conversion.toFixed(2)}%`}
+                      </td>
+                      <td className="whitespace-nowrap px-5 py-3 text-right font-semibold text-slate-900">
+                        {formatInrExact(commissionByLink.get(link.id) ?? 0)}
+                      </td>
+                      <td className="whitespace-nowrap px-5 py-3 text-slate-500">
+                        <LocalTime value={link.createdAt.toISOString()} />
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </AdminTableWrap>
           )}
         </div>
+
+        <AdminPagination
+          page={linkPage}
+          totalPages={linkTotalPages}
+          total={linkCount}
+          noun="profit links"
+          hrefForPage={(target) => buildHref({ lpage: target })}
+        />
       </AdminCard>
+
     </div>
   );
 }

@@ -30,6 +30,7 @@ export default async function AdminStorePageContent({
       storeSlug={store.slug}
       storeName={store.name}
       initial={{
+        homepageUrl: store.homepageUrl ?? "",
         tagline: store.tagline ?? "",
         previousRate: store.previousRate ? String(Number(store.previousRate)) : "",
         visitTime: store.visitTime ?? "",

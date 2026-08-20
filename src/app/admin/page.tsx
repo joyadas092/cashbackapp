@@ -32,6 +32,7 @@ import {
 import { Avatar } from "@/components/shared/Avatar";
 import { StoreLogo } from "@/components/store/StoreLogo";
 import { formatInr, formatInrExact } from "@/lib/utils";
+import { LocalTime } from "@/components/shared/LocalTime";
 
 const WINDOW_DAYS = 15;
 
@@ -526,7 +527,7 @@ export default async function AdminDashboardPage() {
                     </td>
                     <td className="px-5 py-3 text-slate-500">{user.email}</td>
                     <td className="whitespace-nowrap px-5 py-3 text-slate-500">
-                      {dateTime(user.createdAt)}
+                      <LocalTime value={user.createdAt.toISOString()} />
                     </td>
                     <td className="px-5 py-3">
                       <AdminBadge
@@ -567,7 +568,7 @@ export default async function AdminDashboardPage() {
                           {payout.user.name}
                         </span>
                         <span className="block text-xs text-slate-400">
-                          {dateTime(payout.requestedAt)}
+                          <LocalTime value={payout.requestedAt.toISOString()} />
                         </span>
                       </span>
                       <span className="shrink-0 text-sm font-bold text-slate-900">

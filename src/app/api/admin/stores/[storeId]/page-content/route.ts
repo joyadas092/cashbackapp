@@ -39,7 +39,31 @@ const offerSchema = z.object({
     .optional(),
 });
 
+/**
+ * Where /go sends a shopper. Must be an absolute http(s) URL: a relative or
+ * javascript: value here would turn every store click into an open redirect.
+ */
+const homepageUrlSchema = z
+  .string()
+  .trim()
+  .max(500)
+  .transform((v) => (v.length === 0 ? null : v))
+  .nullable()
+  .refine(
+    (value) => {
+      if (value === null) return true;
+      try {
+        const url = new URL(value);
+        return url.protocol === "http:" || url.protocol === "https:";
+      } catch {
+        return false;
+      }
+    },
+    { message: "Enter a full URL starting with https://" }
+  );
+
 const bodySchema = z.object({
+  homepageUrl: homepageUrlSchema.optional(),
   tagline: trimmedOrNull.optional(),
   description: trimmedOrNull.optional(),
   terms: trimmedOrNull.optional(),
@@ -86,6 +110,7 @@ export async function PUT(req: NextRequest, { params }: { params: { storeId: str
     await tx.store.update({
       where: { id: store.id },
       data: {
+        homepageUrl: data.homepageUrl,
         tagline: data.tagline,
         description: data.description,
         terms: data.terms,

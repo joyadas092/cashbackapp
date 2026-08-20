@@ -44,6 +44,7 @@ export default async function AdminSettingsPage() {
           referralEnabled: settings.referralEnabled,
           minWithdrawalAmount: settings.minWithdrawalAmount,
           maxWithdrawalAmount: settings.maxWithdrawalAmount,
+          panRequiredAboveAmount: settings.panRequiredAboveAmount,
           payoutMethods: settings.payoutMethods,
           seoTitle: settings.seoTitle,
           seoDescription: settings.seoDescription,

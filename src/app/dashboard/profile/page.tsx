@@ -7,7 +7,12 @@ import { SecurityForm } from "@/components/profile/SecurityForm";
 import { ProfileForm } from "@/components/profile/ProfileForm";
 import { SettingsSubNav } from "@/components/profile/SettingsSubNav";
 
-type BankDetails = { accountHolder?: string; accountNumber?: string; ifsc?: string };
+type BankDetails = {
+  accountHolder?: string;
+  accountNumber?: string;
+  ifsc?: string;
+  pan?: string;
+};
 
 export default async function ProfilePage() {
   const session = await auth();

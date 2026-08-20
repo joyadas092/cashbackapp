@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { ChevronDown, Users } from "lucide-react";
 import { Avatar } from "@/components/shared/Avatar";
 import { formatInrExact } from "@/lib/utils";
+import { LocalTime } from "@/components/shared/LocalTime";
 
 /**
  * Display status for a referred user.
@@ -184,7 +185,7 @@ export function ReferredUsersTable({
                     </div>
                   </td>
                   <td className="whitespace-nowrap px-5 py-3 text-slate-600">
-                    {formatDate(user.joinedAt)}
+                    <LocalTime value={user.joinedAt} format="date" />
                   </td>
                   <td className="px-5 py-3 text-slate-600">{user.orders}</td>
                   <td className="whitespace-nowrap px-5 py-3 text-slate-600">

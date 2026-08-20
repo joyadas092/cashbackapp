@@ -2,6 +2,12 @@ import Link from "next/link";
 import type { ClickType } from "@prisma/client";
 import { requireAdminSession } from "@/lib/adminAuth";
 import { prisma } from "@/lib/db";
+import { DateRangeFilter } from "@/components/shared/DateRangeFilter";
+import {
+  dateRangeToParams,
+  dateRangeWhere,
+  parseDateRangeFromSearchParams,
+} from "@/lib/dateRangeFilter";
 import {
   AdminBadge,
   AdminCard,
@@ -12,6 +18,7 @@ import {
   AdminTh,
 } from "@/components/admin/ui";
 import { StoreLogo } from "@/components/store/StoreLogo";
+import { LocalTime } from "@/components/shared/LocalTime";
 
 const PAGE_SIZE = 30;
 
@@ -41,17 +48,29 @@ function dateTime(date: Date): string {
 export default async function AdminClicksPage({
   searchParams,
 }: {
-  searchParams: { type?: string; page?: string };
+  searchParams: Record<string, string | string[] | undefined>;
 }) {
   await requireAdminSession("/admin/clicks");
 
-  const filterKey = FILTERS.some((f) => f.key === searchParams.type)
-    ? (searchParams.type as string)
-    : "all";
-  const filter = FILTERS.find((f) => f.key === filterKey)!;
-  const page = Math.max(1, parseInt(searchParams.page ?? "1", 10) || 1);
+  const one = (key: string): string | undefined => {
+    const value = searchParams[key];
+    return Array.isArray(value) ? value[0] : value;
+  };
 
-  const where = filter.types ? { clickType: { in: filter.types } } : {};
+  const typeParam = one("type");
+  const filterKey = FILTERS.some((f) => f.key === typeParam) ? (typeParam as string) : "all";
+  const filter = FILTERS.find((f) => f.key === filterKey)!;
+  const page = Math.max(1, parseInt(one("page") ?? "1", 10) || 1);
+
+  const range = parseDateRangeFromSearchParams(searchParams);
+  const createdAtFilter = dateRangeWhere(range);
+  const rangeSuffix = dateRangeToParams(range).toString();
+  const rangeQs = rangeSuffix ? `&${rangeSuffix}` : "";
+
+  const where = {
+    ...(filter.types ? { clickType: { in: filter.types } } : {}),
+    ...(createdAtFilter ? { createdAt: createdAtFilter } : {}),
+  };
 
   const [clicks, total, counts] = await Promise.all([
     prisma.click.findMany({
@@ -67,7 +86,11 @@ export default async function AdminClicksPage({
       },
     }),
     prisma.click.count({ where }),
-    prisma.click.groupBy({ by: ["clickType"], _count: { _all: true } }),
+    prisma.click.groupBy({
+      by: ["clickType"],
+      where: createdAtFilter ? { createdAt: createdAtFilter } : {},
+      _count: { _all: true },
+    }),
   ]);
 
   const countByType = new Map(counts.map((c) => [c.clickType, c._count._all]));
@@ -92,7 +115,7 @@ export default async function AdminClicksPage({
             return (
               <Link
                 key={f.key}
-                href={`/admin/clicks?type=${f.key}`}
+                href={`/admin/clicks?type=${f.key}${rangeQs}`}
                 aria-current={isActive ? "page" : undefined}
                 className={`-mb-px shrink-0 whitespace-nowrap border-b-2 px-3 py-3.5 text-sm font-semibold transition-colors ${
                   isActive
@@ -105,6 +128,25 @@ export default async function AdminClicksPage({
             );
           })}
         </nav>
+
+        {/* GET form so the range stays in the URL and survives paging. */}
+        <form
+          action="/admin/clicks"
+          className="flex flex-wrap items-center gap-2 border-b border-slate-200 bg-slate-50/60 px-4 py-3 sm:px-5"
+        >
+          <input type="hidden" name="type" value={filterKey} />
+          <DateRangeFilter
+            range={range}
+            basePath="/admin/clicks"
+            hiddenFields={{ type: filterKey }}
+          />
+          <button
+            type="submit"
+            className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-slate-700"
+          >
+            Apply
+          </button>
+        </form>
 
         {clicks.length === 0 ? (
           <AdminEmpty title="No clicks recorded" />
@@ -131,7 +173,7 @@ export default async function AdminClicksPage({
                 return (
                   <tr key={click.id} className="hover:bg-slate-50/60">
                     <td className="whitespace-nowrap px-5 py-3 text-slate-500">
-                      {dateTime(click.createdAt)}
+                      <LocalTime value={click.createdAt.toISOString()} />
                     </td>
                     <td className="px-5 py-3">
                       <span className="flex items-center gap-2 text-slate-800">
@@ -195,7 +237,7 @@ export default async function AdminClicksPage({
           totalPages={totalPages}
           total={total}
           noun="clicks"
-          hrefForPage={(p) => `/admin/clicks?type=${filterKey}&page=${p}`}
+          hrefForPage={(p) => `/admin/clicks?type=${filterKey}&page=${p}${rangeQs}`}
         />
       </AdminCard>
     </div>

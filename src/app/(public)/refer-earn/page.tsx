@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { headers } from "next/headers";
 import type { Metadata } from "next";
 import {
   ArrowRight,
@@ -69,9 +68,7 @@ export default async function PublicReferEarnPage() {
       select: { referralCode: true },
     });
     if (user) {
-      const host = headers().get("host") ?? "localhost:3000";
-      const protocol = host.startsWith("localhost") ? "http" : "https";
-      shareUrl = `${protocol}://${host}/refer/${user.referralCode}`;
+      shareUrl = `${siteUrl()}/refer/${user.referralCode}`;
     }
   }
 

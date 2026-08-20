@@ -1,11 +1,21 @@
 import Link from "next/link";
 import { Inbox } from "lucide-react";
 import { StoreLogo } from "@/components/store/StoreLogo";
+import { LocalTime } from "@/components/shared/LocalTime";
 
 export interface ActivityCell {
   /** Plain text, or a store chip when `store` is set. */
   text?: string;
   store?: { name: string; slug: string; logoUrl: string };
+  /**
+   * ISO timestamp, rendered in the viewer's timezone. Kept separate from
+   * `text` because a date formatted on the server carries the server's
+   * timezone, which is UTC in production.
+   */
+  iso?: string;
+  isoFormat?: "datetime" | "date";
+  /** Full URL shown as selectable text with a copy affordance. */
+  link?: { href: string; label?: string };
   tone?: "default" | "muted" | "money" | "debit" | "mono";
   badge?: { label: string; tone: string };
   nowrap?: boolean;
@@ -103,7 +113,22 @@ export function ActivityTable({
                         cell?.nowrap ? "whitespace-nowrap" : ""
                       }`}
                     >
-                      {cell?.store ? (
+                      {cell?.iso ? (
+                        <LocalTime
+                          value={cell.iso}
+                          format={cell.isoFormat ?? "datetime"}
+                          className={TONES[cell.tone ?? "muted"]}
+                        />
+                      ) : cell?.link ? (
+                        <a
+                          href={cell.link.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="break-all font-mono text-xs text-violet-700 hover:underline"
+                        >
+                          {cell.link.label ?? cell.link.href}
+                        </a>
+                      ) : cell?.store ? (
                         <Link
                           href={`/stores/${cell.store.slug}`}
                           className="flex items-center gap-2.5 font-medium text-slate-800 hover:text-violet-700"

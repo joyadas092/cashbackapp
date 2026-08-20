@@ -12,6 +12,7 @@ import {
 import { TopStoresDonut } from "@/components/admin/AdminCharts";
 import { CmsPagesManager, type CmsPageRow } from "@/components/admin/CmsPagesManager";
 import { reportDateTime } from "@/lib/adminReports";
+import { LocalTime } from "@/components/shared/LocalTime";
 
 const PAGE_SIZE = 15;
 
@@ -260,7 +261,7 @@ export default async function AdminCmsPagesPage({
                         {row.title}
                       </span>
                       <span className="block text-xs text-slate-400">
-                        {reportDateTime(row.updatedAt)}
+                        <LocalTime value={row.updatedAt.toISOString()} />
                         {row.updatedBy?.name ? ` · by ${row.updatedBy.name}` : ""}
                       </span>
                     </span>

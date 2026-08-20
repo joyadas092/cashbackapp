@@ -22,6 +22,7 @@ export interface StorePageContentEditorProps {
   storeSlug: string;
   storeName: string;
   initial: {
+    homepageUrl: string;
     tagline: string;
     previousRate: string;
     visitTime: string;
@@ -55,6 +56,7 @@ export function StorePageContentEditor({
   storeName,
   initial,
 }: StorePageContentEditorProps) {
+  const [homepageUrl, setHomepageUrl] = useState(initial.homepageUrl);
   const [tagline, setTagline] = useState(initial.tagline);
   const [previousRate, setPreviousRate] = useState(initial.previousRate);
   const [visitTime, setVisitTime] = useState(initial.visitTime);
@@ -78,6 +80,7 @@ export function StorePageContentEditor({
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        homepageUrl,
         tagline,
         previousRate: previousRate.trim() === "" ? null : previousRate,
         visitTime,
@@ -160,6 +163,20 @@ export function StorePageContentEditor({
       <section className="rounded-xl2 border border-slate-200 p-5">
         <h2 className="text-lg font-semibold">Header</h2>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <div className="sm:col-span-2">
+            <label className={label}>Destination URL</label>
+            <input
+              className={`${field} mt-1.5`}
+              value={homepageUrl}
+              onChange={(e) => setHomepageUrl(e.target.value)}
+              placeholder="https://www.flipkart.com/"
+              inputMode="url"
+            />
+            <p className="mt-1 text-xs text-slate-400">
+              Where a shopper lands after clicking through. Must be a full https:// URL. Leave blank
+              to fall back to the store&apos;s first merchant domain.
+            </p>
+          </div>
           <div className="sm:col-span-2">
             <label className={label}>Tagline (under the store name)</label>
             <input

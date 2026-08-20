@@ -4,6 +4,7 @@ import { ChevronRight, Plus, Ticket } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { TICKET_STATUS_META } from "@/lib/support";
+import { LocalTime } from "@/components/shared/LocalTime";
 
 function formatDateTime(date: Date): string {
   return date.toLocaleString("en-IN", {
@@ -111,7 +112,7 @@ export default async function MyTicketsPage() {
                         </span>
                       </td>
                       <td className="whitespace-nowrap px-5 py-3 text-slate-500">
-                        {formatDateTime(ticket.updatedAt)}
+                        <LocalTime value={ticket.updatedAt.toISOString()} />
                       </td>
                       <td className="px-5 py-3 text-right">
                         <Link href={`/dashboard/help/tickets/${ticket.id}`} aria-label="Open ticket">

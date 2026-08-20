@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { generatePayoutReference } from "@/lib/support";
 import { getSettings } from "@/lib/settings";
+import { PAN_PATTERN } from "@/lib/validation/schemas";
 
 /**
  * Withdrawal requests.
@@ -82,12 +83,29 @@ export async function POST(req: NextRequest) {
   // admin restricted the account would still carry the old status.
   const account = await prisma.user.findUnique({
     where: { id: userId },
-    select: { riskStatus: true },
+    select: { riskStatus: true, profile: { select: { bankDetails: true } } },
   });
   if (account?.riskStatus === "RESTRICTED" || account?.riskStatus === "BLOCKED") {
     return NextResponse.json(
       { error: "Withdrawals are paused on this account. Contact support for help." },
       { status: 403 }
+    );
+  }
+
+  // TDS applies above a threshold, so a PAN has to be on file before we can pay
+  // out that much. Enforced here, not only in the form, like every other setting.
+  const panOnFile = (() => {
+    const details = account?.profile?.bankDetails as { pan?: unknown } | null | undefined;
+    const pan = typeof details?.pan === "string" ? details.pan.trim().toUpperCase() : "";
+    return PAN_PATTERN.test(pan);
+  })();
+
+  if (settings.panRequiredAboveAmount > 0 && amount > settings.panRequiredAboveAmount && !panOnFile) {
+    return NextResponse.json(
+      {
+        error: `Add your PAN in payout details before withdrawing more than ₹${settings.panRequiredAboveAmount}.`,
+      },
+      { status: 400 }
     );
   }
 

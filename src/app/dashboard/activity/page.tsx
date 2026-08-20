@@ -27,6 +27,10 @@ import {
 } from "@/components/activity/ActivityTable";
 import { StoreLogo } from "@/components/store/StoreLogo";
 import { formatInrExact } from "@/lib/utils";
+import { siteUrl } from "@/lib/siteUrl";
+import { LocalTime } from "@/components/shared/LocalTime";
+import { DateRangeFilter } from "@/components/shared/DateRangeFilter";
+import { dateRangeToParams, dateRangeWhere, parseDateRange } from "@/lib/dateRangeFilter";
 
 const CHART_DAYS = 30;
 const PAGE_SIZE = 20;
@@ -39,16 +43,6 @@ function startOfMonth(offset: number): Date {
 function monthDelta(current: number, previous: number): number | null {
   if (previous === 0) return null;
   return Math.round(((current - previous) / previous) * 100);
-}
-
-function formatDateTime(date: Date): string {
-  return date.toLocaleString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 }
 
 /**
@@ -85,7 +79,7 @@ function bucketByDay(rows: Array<{ createdAt: Date; amount: unknown }>): Earning
 export default async function ActivityPage({
   searchParams,
 }: {
-  searchParams: { tab?: string; page?: string };
+  searchParams: Record<string, string | string[] | undefined>;
 }) {
   const session = await auth();
   // Layout guards too, but Next fetches layout and page data in parallel.
@@ -94,10 +88,31 @@ export default async function ActivityPage({
   }
   const userId = session.user.id;
 
-  const tab: ActivityTabKey = isActivityTab(searchParams.tab) ? searchParams.tab : "overview";
-  const page = Math.max(1, parseInt(searchParams.page ?? "1", 10) || 1);
+  // Next hands repeated keys through as arrays; every filter here is single-valued.
+  const one = (key: string): string | undefined => {
+    const value = searchParams[key];
+    return Array.isArray(value) ? value[0] : value;
+  };
+
+  const tabParam = one("tab");
+  const tab: ActivityTabKey = isActivityTab(tabParam) ? tabParam : "overview";
+  const page = Math.max(1, parseInt(one("page") ?? "1", 10) || 1);
   const skip = (page - 1) * PAGE_SIZE;
-  const hrefForPage = (p: number) => `/dashboard/activity?tab=${tab}&page=${p}`;
+
+  // One date range applies to whichever tab is open. Held in the URL so a
+  // filtered view stays shareable and paging keeps the filter.
+  const rangeParams = new URLSearchParams();
+  for (const key of ["range", "from", "to"]) {
+    const value = one(key);
+    if (value) rangeParams.set(key, value);
+  }
+  const range = parseDateRange(rangeParams);
+  const createdAtFilter = dateRangeWhere(range);
+  const inRange = createdAtFilter ? { createdAt: createdAtFilter } : {};
+
+  const rangeSuffix = dateRangeToParams(range).toString();
+  const hrefForPage = (p: number) =>
+    `/dashboard/activity?tab=${tab}&page=${p}${rangeSuffix ? `&${rangeSuffix}` : ""}`;
 
   const thisMonth = startOfMonth(0);
   const lastMonth = startOfMonth(-1);
@@ -229,6 +244,8 @@ export default async function ActivityPage({
 
   // --- Per-tab content ------------------------------------------------------
   let tabTitle = "Overview";
+  /** Extra headline stat for tabs that have one, shown beside the entry count. */
+  let tabNote = "";
   let columns: ActivityColumn[] = [];
   let rows: ActivityRow[] = [];
   let total = 0;
@@ -247,7 +264,11 @@ export default async function ActivityPage({
       { key: "status", label: "Status" },
     ];
 
-    const where = { userId, clickType: { in: ["DIRECT_CASHBACK", "VISIT_STORE"] as ClickType[] } };
+    const where = {
+      userId,
+      clickType: { in: ["DIRECT_CASHBACK", "VISIT_STORE"] as ClickType[] },
+      ...inRange,
+    };
     const [clicks, count] = await Promise.all([
       prisma.click.findMany({
         where,
@@ -262,7 +283,7 @@ export default async function ActivityPage({
     rows = clicks.map((click) => ({
       id: click.id,
       cells: {
-        date: { text: formatDateTime(click.createdAt), tone: "muted", nowrap: true },
+        date: { iso: click.createdAt.toISOString(), tone: "muted", nowrap: true },
         store: { store: click.store },
         type: {
           text: click.clickType === "DIRECT_CASHBACK" ? "Cashback trip" : "Store visit",
@@ -289,7 +310,7 @@ export default async function ActivityPage({
     ];
 
     // Own shopping only — profit-link clicks are a different tab.
-    const where = { click: { userId, clickType: { not: "PROFIT_LINK" as const } } };
+    const where = { click: { userId, clickType: { not: "PROFIT_LINK" as const } }, ...inRange };
     const [txs, count] = await Promise.all([
       prisma.transaction.findMany({
         where,
@@ -304,7 +325,7 @@ export default async function ActivityPage({
     rows = txs.map((tx) => ({
       id: tx.id,
       cells: {
-        date: { text: formatDateTime(tx.createdAt), tone: "muted", nowrap: true },
+        date: { iso: tx.createdAt.toISOString(), tone: "muted", nowrap: true },
         store: { store: tx.store },
         order: { text: tx.orderId ?? tx.cuelinksTransactionId, tone: "mono" },
         amount: { text: formatInrExact(Number(tx.saleAmount)), nowrap: true },
@@ -321,13 +342,14 @@ export default async function ActivityPage({
     columns = [
       { key: "date", label: "Date & Time" },
       { key: "store", label: "Store" },
-      { key: "code", label: "Link Code" },
+      { key: "link", label: "Your Link" },
+      { key: "clicks", label: "Clicks on this link", align: "right" },
       { key: "status", label: "Status" },
     ];
 
     // Clicks on links this user created — the clicker is someone else, so this
     // filters on the profit link's owner, never on Click.userId.
-    const where = { profitLink: { userId } };
+    const where = { profitLink: { userId }, ...inRange };
     const [clicks, count] = await Promise.all([
       prisma.click.findMany({
         where,
@@ -342,12 +364,36 @@ export default async function ActivityPage({
       prisma.click.count({ where }),
     ]);
     total = count;
+
+    // All-time total across every link this user owns, so the headline number
+    // doesn't move when a date range is applied to the table below it.
+    const allTimeClicks = await prisma.click.count({ where: { profitLink: { userId } } });
+    tabNote = `${allTimeClicks} total ${allTimeClicks === 1 ? "click" : "clicks"} on your links`;
+
+    // Clicks per link, so each row shows how the link it belongs to is doing
+    // overall — not just that one click. Counted from Click rather than
+    // ProfitLink.clickCount, which is a cached column.
+    const linkIds = [...new Set(clicks.map((c) => c.profitLinkId).filter(Boolean))] as string[];
+    const perLink =
+      linkIds.length > 0
+        ? await prisma.click.groupBy({
+            by: ["profitLinkId"],
+            where: { profitLinkId: { in: linkIds } },
+            _count: { _all: true },
+          })
+        : [];
+    const clicksByLink = new Map(perLink.map((row) => [row.profitLinkId, row._count._all]));
+
+    const base = siteUrl();
     rows = clicks.map((click) => ({
       id: click.id,
       cells: {
-        date: { text: formatDateTime(click.createdAt), tone: "muted", nowrap: true },
+        date: { iso: click.createdAt.toISOString(), tone: "muted", nowrap: true },
         store: { store: click.store },
-        code: { text: click.profitLink?.code ?? "—", tone: "mono" },
+        link: click.profitLink
+          ? { link: { href: `${base}/p/${click.profitLink.code}` } }
+          : { text: "—" },
+        clicks: { text: String(clicksByLink.get(click.profitLinkId) ?? 0), nowrap: true },
         status: {
           badge: { label: click.status, tone: STATUS_TONES[click.status] ?? "bg-slate-100" },
         },
@@ -368,7 +414,7 @@ export default async function ActivityPage({
       { key: "status", label: "Status" },
     ];
 
-    const where = { click: { profitLink: { userId } } };
+    const where = { click: { profitLink: { userId } }, ...inRange };
     const [txs, count] = await Promise.all([
       prisma.transaction.findMany({
         where,
@@ -386,7 +432,7 @@ export default async function ActivityPage({
     rows = txs.map((tx) => ({
       id: tx.id,
       cells: {
-        date: { text: formatDateTime(tx.createdAt), tone: "muted", nowrap: true },
+        date: { iso: tx.createdAt.toISOString(), tone: "muted", nowrap: true },
         store: { store: tx.store },
         code: { text: tx.click.profitLink?.code ?? "—", tone: "mono" },
         amount: { text: formatInrExact(Number(tx.saleAmount)), nowrap: true },
@@ -414,7 +460,7 @@ export default async function ActivityPage({
     ];
 
     if (referredIds.length > 0) {
-      const where = { click: { userId: { in: referredIds } } };
+      const where = { click: { userId: { in: referredIds } }, ...inRange };
       const [txs, count] = await Promise.all([
         prisma.transaction.findMany({
           where,
@@ -429,7 +475,7 @@ export default async function ActivityPage({
       rows = txs.map((tx) => ({
         id: tx.id,
         cells: {
-          date: { text: formatDateTime(tx.createdAt), tone: "muted", nowrap: true },
+          date: { iso: tx.createdAt.toISOString(), tone: "muted", nowrap: true },
           store: { store: tx.store },
           amount: { text: formatInrExact(Number(tx.saleAmount)), nowrap: true },
           earnings: {
@@ -457,6 +503,7 @@ export default async function ActivityPage({
     const where = {
       userId,
       type: { in: ["REFERRAL_EARNING", "REFERRAL_EARNING_REVERSED"] as WalletTxType[] },
+      ...inRange,
     };
     const [entries, count] = await Promise.all([
       prisma.walletTransaction.findMany({
@@ -473,7 +520,7 @@ export default async function ActivityPage({
       return {
         id: entry.id,
         cells: {
-          date: { text: formatDateTime(entry.createdAt), tone: "muted", nowrap: true },
+          date: { iso: entry.createdAt.toISOString(), tone: "muted", nowrap: true },
           description: { text: entry.description ?? "Referral earning" },
           amount: {
             text: `${isReversal ? "−" : "+"} ${formatInrExact(Number(entry.amount))}`,
@@ -581,7 +628,7 @@ export default async function ActivityPage({
     overview = {
       recent: recentTxs.map((tx) => ({
         id: tx.id,
-        date: formatDateTime(tx.createdAt),
+        date: tx.createdAt.toISOString(),
         store: tx.store,
         orderId: tx.orderId ?? tx.cuelinksTransactionId,
         amount: Number(tx.saleAmount),
@@ -711,7 +758,7 @@ export default async function ActivityPage({
                         {overview.recent.map((tx) => (
                           <tr key={tx.id}>
                             <td className="whitespace-nowrap px-4 py-2.5 text-slate-500">
-                              {tx.date}
+                              <LocalTime value={tx.date} />
                             </td>
                             <td className="px-4 py-2.5">
                               <Link
@@ -856,13 +903,35 @@ export default async function ActivityPage({
           <>
             <div className="flex items-center justify-between gap-4 px-5 pt-4">
               <h2 className="text-base font-bold text-slate-900">{tabTitle}</h2>
-              {total > 0 && (
-                <span className="text-xs text-slate-400">
-                  {total} {total === 1 ? "entry" : "entries"}
-                </span>
-              )}
+              <div className="flex items-center gap-3 text-xs text-slate-400">
+                {tabNote && <span>{tabNote}</span>}
+                {total > 0 && (
+                  <span>
+                    {total} {total === 1 ? "entry" : "entries"}
+                  </span>
+                )}
+              </div>
             </div>
-            <div className="mt-3">
+
+            {/* GET form so the chosen range stays in the URL and survives paging. */}
+            <form
+              method="get"
+              action="/dashboard/activity"
+              className="mt-3 border-y border-slate-100 bg-slate-50/60 px-5 py-3"
+            >
+              <input type="hidden" name="tab" value={tab} />
+              <div className="flex flex-wrap items-center gap-2">
+                <DateRangeFilter range={range} basePath="/dashboard/activity" hiddenFields={{ tab }} />
+                <button
+                  type="submit"
+                  className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-slate-700"
+                >
+                  Apply
+                </button>
+              </div>
+            </form>
+
+            <div>
               <ActivityTable
                 columns={columns}
                 rows={rows}

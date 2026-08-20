@@ -17,6 +17,7 @@ export interface SettingsValues {
   referralEnabled: boolean;
   minWithdrawalAmount: number;
   maxWithdrawalAmount: number;
+  panRequiredAboveAmount: number;
   payoutMethods: string[];
   seoTitle: string;
   seoDescription: string;
@@ -347,6 +348,21 @@ export function SettingsWorkspace({
                 onChange={(e) => set("maxWithdrawalAmount", Number(e.target.value.replace(/[^\d.]/g, "")) || 0)}
               />
             </div>
+            <div>
+              <label className={label}>PAN required above (₹)</label>
+              <input
+                className={field}
+                inputMode="decimal"
+                value={String(values.panRequiredAboveAmount)}
+                onChange={(e) =>
+                  set("panRequiredAboveAmount", Number(e.target.value.replace(/[^\d.]/g, "")) || 0)
+                }
+              />
+              <p className="mt-1.5 text-xs text-slate-400">
+                Withdrawals above this amount need a PAN on file, for TDS. Set 0 to never require
+                one.
+              </p>
+            </div>
           </div>
 
           <div className="mt-5">
@@ -385,7 +401,14 @@ export function SettingsWorkspace({
             </p>
           </div>
 
-          <SaveBar keys={["minWithdrawalAmount", "maxWithdrawalAmount", "payoutMethods"]} />
+          <SaveBar
+            keys={[
+              "minWithdrawalAmount",
+              "maxWithdrawalAmount",
+              "panRequiredAboveAmount",
+              "payoutMethods",
+            ]}
+          />
         </Card>
       )}
 

@@ -18,6 +18,8 @@ const bodySchema = z.object({
 
   minWithdrawalAmount: z.coerce.number().min(1).max(1_000_000).optional(),
   maxWithdrawalAmount: z.coerce.number().min(1).max(10_000_000).optional(),
+  // Zero is meaningful here: never require a PAN.
+  panRequiredAboveAmount: z.coerce.number().min(0).max(10_000_000).optional(),
   payoutMethods: z
     .array(z.enum(["UPI", "BANK_TRANSFER", "PAYTM", "AMAZON_PAY"]))
     .min(1, "Keep at least one payout method enabled")
