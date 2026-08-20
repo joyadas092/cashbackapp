@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Prisma, TransactionStatus } from "@prisma/client";
-import { Search } from "lucide-react";
+import { CheckCircle2, Clock, IndianRupee, Package, Search, Undo2, XCircle } from "lucide-react";
 import { requireAdminSession } from "@/lib/adminAuth";
 import { prisma } from "@/lib/db";
 import {
@@ -9,11 +9,19 @@ import {
   AdminEmpty,
   AdminPageHeader,
   AdminPagination,
+  AdminStat,
   AdminTableWrap,
   AdminTh,
 } from "@/components/admin/ui";
+import { DualMetricChart, TopStoresDonut } from "@/components/admin/AdminCharts";
 import { StoreLogo } from "@/components/store/StoreLogo";
-import { formatInrExact } from "@/lib/utils";
+import {
+  REPORT_WINDOW_DAYS,
+  buildDualSeries,
+  reportDelta,
+  reportWindows,
+} from "@/lib/adminReports";
+import { formatInr, formatInrExact } from "@/lib/utils";
 
 const PAGE_SIZE = 25;
 
@@ -74,7 +82,20 @@ export default async function AdminOrdersPage({
       : {}),
   };
 
-  const [orders, total, counts] = await Promise.all([
+  const { inPeriod, inPrior } = reportWindows();
+
+  const [
+    orders,
+    total,
+    counts,
+    valueAgg,
+    ordersPeriod,
+    ordersPrior,
+    valuePeriod,
+    valuePrior,
+    seriesOrders,
+    ordersByStore,
+  ] = await Promise.all([
     prisma.transaction.findMany({
       where,
       orderBy: { createdAt: "desc" },
@@ -87,6 +108,22 @@ export default async function AdminOrdersPage({
     }),
     prisma.transaction.count({ where }),
     prisma.transaction.groupBy({ by: ["status"], _count: { _all: true } }),
+    prisma.transaction.aggregate({ _sum: { saleAmount: true } }),
+    prisma.transaction.count({ where: { createdAt: inPeriod } }),
+    prisma.transaction.count({ where: { createdAt: inPrior } }),
+    prisma.transaction.aggregate({
+      where: { createdAt: inPeriod },
+      _sum: { saleAmount: true },
+    }),
+    prisma.transaction.aggregate({
+      where: { createdAt: inPrior },
+      _sum: { saleAmount: true },
+    }),
+    prisma.transaction.findMany({
+      where: { createdAt: inPeriod },
+      select: { createdAt: true, saleAmount: true },
+    }),
+    prisma.transaction.groupBy({ by: ["storeId"], _count: { _all: true } }),
   ]);
 
   const countByStatus = new Map(counts.map((c) => [c.status, c._count._all]));
@@ -98,6 +135,49 @@ export default async function AdminOrdersPage({
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const hrefFor = (p: number) =>
     `/admin/orders?status=${filterKey}${query ? `&q=${encodeURIComponent(query)}` : ""}${p > 1 ? `&page=${p}` : ""}`;
+
+  // Orders per day against the rupee value they carried.
+  const series = buildDualSeries(
+    seriesOrders,
+    seriesOrders.map((tx) => ({ createdAt: tx.createdAt, amount: tx.saleAmount })),
+    { sumSecondary: true }
+  );
+
+  const statusSlices = counts
+    .map((row) => ({
+      name: row.status.charAt(0) + row.status.slice(1).toLowerCase(),
+      value: row._count._all,
+    }))
+    .filter((slice) => slice.value > 0);
+  const allOrders = counts.reduce((sum, row) => sum + row._count._all, 0);
+
+  const topStoreRows = [...ordersByStore]
+    .sort((a, b) => b._count._all - a._count._all)
+    .slice(0, 5);
+  const topStoreRecords =
+    topStoreRows.length > 0
+      ? await prisma.store.findMany({
+          where: { id: { in: topStoreRows.map((row) => row.storeId) } },
+          select: { id: true, name: true, slug: true, logoUrl: true },
+        })
+      : [];
+  const storeById = new Map(topStoreRecords.map((store) => [store.id, store]));
+
+  const num = (value: unknown) => Number(value ?? 0);
+  const stats = [
+    { label: "Total Orders", value: String(allOrders), icon: Package, tone: "bg-violet-50 text-violet-600", delta: reportDelta(ordersPeriod, ordersPrior) },
+    { label: "Confirmed", value: String(countFor(["CONFIRMED", "PAID"])), icon: CheckCircle2, tone: "bg-cashlime-50 text-cashlime-700", delta: null },
+    { label: "Pending", value: String(countFor(["PENDING"])), icon: Clock, tone: "bg-amber-50 text-amber-600", delta: null, invertDelta: true },
+    { label: "Rejected", value: String(countFor(["REJECTED", "CANCELLED"])), icon: XCircle, tone: "bg-rose-50 text-rose-600", delta: null, invertDelta: true },
+    { label: "Reversed", value: String(countFor(["REVERSED"])), icon: Undo2, tone: "bg-slate-100 text-slate-600", delta: null, invertDelta: true },
+    {
+      label: "Total Order Value",
+      value: formatInr(num(valueAgg._sum.saleAmount)),
+      icon: IndianRupee,
+      tone: "bg-sky-50 text-sky-600",
+      delta: reportDelta(num(valuePeriod._sum.saleAmount), num(valuePrior._sum.saleAmount)),
+    },
+  ];
 
   return (
     <div>
@@ -124,6 +204,13 @@ export default async function AdminOrdersPage({
         }
       />
 
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
+        {stats.map((stat) => (
+          <AdminStat key={stat.label} {...stat} deltaNote={`vs prev ${REPORT_WINDOW_DAYS} days`} />
+        ))}
+      </div>
+
+      <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
       <AdminCard padded={false}>
         <nav className="flex gap-1 overflow-x-auto border-b border-slate-200 px-4 sm:px-5">
           {FILTERS.map((f) => {
@@ -226,6 +313,65 @@ export default async function AdminOrdersPage({
           hrefForPage={hrefFor}
         />
       </AdminCard>
+
+        <aside className="space-y-6">
+          <AdminCard title="Orders Overview" padded={false}>
+            <div className="px-5 pb-5 pt-4">
+              <p className="mb-2 text-xs text-slate-400">Last {REPORT_WINDOW_DAYS} days</p>
+              <DualMetricChart data={series} primaryName="Orders" secondaryName="Order Value" />
+            </div>
+          </AdminCard>
+
+          <AdminCard title="Order Status Distribution" padded={false}>
+            <div className="px-5 pb-5 pt-4">
+              <TopStoresDonut
+                data={statusSlices}
+                total={allOrders}
+                centreLabel="Orders"
+                valueFormat="count"
+                emptyMessage="No orders yet."
+              />
+            </div>
+          </AdminCard>
+
+          <AdminCard title="Top Stores by Orders">
+            {topStoreRows.length === 0 ? (
+              <p className="text-sm text-slate-500">No orders yet.</p>
+            ) : (
+              <ol className="space-y-3">
+                {topStoreRows.map((row, i) => {
+                  const store = storeById.get(row.storeId);
+                  if (!store) return null;
+                  return (
+                    <li key={row.storeId} className="flex items-center gap-3">
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-600">
+                        {i + 1}
+                      </span>
+                      <span className="shrink-0 rounded-lg ring-1 ring-slate-200">
+                        <StoreLogo
+                          src={store.logoUrl}
+                          alt={store.name}
+                          size={24}
+                          fallbackSlug={store.slug}
+                        />
+                      </span>
+                      <span className="min-w-0 flex-1 truncate text-sm text-slate-700">
+                        {store.name}
+                      </span>
+                      <span className="shrink-0 text-sm font-bold text-slate-900">
+                        {row._count._all}
+                      </span>
+                      <span className="w-14 shrink-0 text-right text-xs text-slate-400">
+                        {allOrders > 0 ? `${((row._count._all / allOrders) * 100).toFixed(1)}%` : "—"}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ol>
+            )}
+          </AdminCard>
+        </aside>
+      </div>
     </div>
   );
 }

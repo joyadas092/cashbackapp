@@ -17,8 +17,10 @@ import {
   Menu,
   MousePointerClick,
   Package,
+  Radar,
   Receipt,
   Settings,
+  UserPlus,
   ShieldCheck,
   Store,
   Tag,
@@ -60,7 +62,8 @@ export const ADMIN_NAV: AdminNavGroup[] = [
       { href: "/admin/orders", icon: Package, label: "Orders" },
       { href: "/admin/transactions", icon: Receipt, label: "Transactions" },
       { href: "/admin/payouts", icon: Wallet, label: "Payouts" },
-      { href: "/admin/campaigns", icon: Link2, label: "Affiliate" },
+      { href: "/admin/affiliate", icon: Link2, label: "Affiliate" },
+      { href: "/admin/referrals", icon: UserPlus, label: "Referrals" },
       { href: "/admin/clicks", icon: MousePointerClick, label: "Clicks" },
     ],
   },
@@ -77,6 +80,7 @@ export const ADMIN_NAV: AdminNavGroup[] = [
   {
     title: "System",
     items: [
+      { href: "/admin/campaigns", icon: Radar, label: "Cuelinks Campaigns" },
       { href: "/admin/referral", icon: Settings, label: "Settings" },
       { href: "#", icon: ShieldCheck, label: "Roles & Permissions", disabled: true },
       { href: "/admin/activity-logs", icon: Activity, label: "Activity Logs" },

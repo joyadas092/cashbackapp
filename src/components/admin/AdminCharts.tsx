@@ -125,13 +125,105 @@ export function UserGrowthChart({ data }: { data: UserGrowthPoint[] }) {
   );
 }
 
+export interface DualSeriesPoint {
+  label: string;
+  primary: number;
+  secondary: number;
+}
+
+/**
+ * Two series on independent axes — a count on the left, rupees on the right.
+ * Used by the store, order and affiliate reports, which all want "activity
+ * versus money" on one timeline but never on one scale.
+ */
+export function DualMetricChart({
+  data,
+  primaryName,
+  secondaryName,
+  primaryIsMoney = false,
+}: {
+  data: DualSeriesPoint[];
+  primaryName: string;
+  secondaryName: string;
+  primaryIsMoney?: boolean;
+}) {
+  return (
+    <div className="h-60 w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <AreaChart data={data} margin={{ top: 5, right: 5, left: -12, bottom: 0 }}>
+          <defs>
+            <linearGradient id="dualSecondary" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#10b981" stopOpacity={0.25} />
+              <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <XAxis dataKey="label" tick={AXIS} tickLine={false} axisLine={false} />
+          <YAxis yAxisId="left" tick={AXIS} tickLine={false} axisLine={false} width={48} />
+          <YAxis
+            yAxisId="right"
+            orientation="right"
+            tick={AXIS}
+            tickLine={false}
+            axisLine={false}
+            width={52}
+          />
+          <Tooltip
+            contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 12 }}
+            formatter={(value, name) =>
+              name === secondaryName || (name === primaryName && primaryIsMoney)
+                ? [formatInr(Number(value)), String(name)]
+                : [String(value), String(name)]
+            }
+          />
+          <Legend iconType="plainline" wrapperStyle={{ fontSize: 12, paddingBottom: 8 }} />
+          <Line
+            yAxisId="left"
+            type="monotone"
+            dataKey="primary"
+            name={primaryName}
+            stroke="#7c3aed"
+            strokeWidth={2}
+            dot={false}
+          />
+          <Area
+            yAxisId="right"
+            type="monotone"
+            dataKey="secondary"
+            name={secondaryName}
+            stroke="#10b981"
+            strokeWidth={2}
+            fill="url(#dualSecondary)"
+          />
+        </AreaChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
 const SLICE_COLORS = ["#f59e0b", "#3b82f6", "#ec4899", "#10b981", "#8b5cf6", "#94a3b8"];
 
-export function TopStoresDonut({ data, total }: { data: StoreSlice[]; total: number }) {
+/**
+ * Donut with a legend. `valueFormat` decides whether the slices read as money
+ * or as plain counts — the same component backs commission-by-store and
+ * orders-by-status, which are not the same kind of number.
+ */
+export function TopStoresDonut({
+  data,
+  total,
+  centreLabel = "Commission",
+  valueFormat = "money",
+  emptyMessage = "No confirmed commission yet.",
+}: {
+  data: StoreSlice[];
+  total: number;
+  centreLabel?: string;
+  valueFormat?: "money" | "count";
+  emptyMessage?: string;
+}) {
+  const show = (value: number) => (valueFormat === "money" ? formatInr(value) : String(value));
+
   if (data.length === 0) {
-    return (
-      <p className="py-12 text-center text-sm text-slate-500">No confirmed commission yet.</p>
-    );
+    return <p className="py-12 text-center text-sm text-slate-500">{emptyMessage}</p>;
   }
 
   return (
@@ -154,14 +246,14 @@ export function TopStoresDonut({ data, total }: { data: StoreSlice[]; total: num
             </Pie>
             <Tooltip
               contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 12 }}
-              formatter={(value) => formatInr(Number(value))}
+              formatter={(value) => show(Number(value))}
             />
           </PieChart>
         </ResponsiveContainer>
 
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
-          <span className="text-sm font-extrabold text-slate-900">{formatInr(total)}</span>
-          <span className="text-[11px] text-slate-400">Commission</span>
+          <span className="text-sm font-extrabold text-slate-900">{show(total)}</span>
+          <span className="text-[11px] text-slate-400">{centreLabel}</span>
         </div>
       </div>
 
@@ -174,7 +266,7 @@ export function TopStoresDonut({ data, total }: { data: StoreSlice[]; total: num
             />
             <span className="min-w-0 flex-1 truncate text-sm text-slate-700">{slice.name}</span>
             <span className="shrink-0 text-sm font-semibold text-slate-900">
-              {formatInr(slice.value)}
+              {show(slice.value)}
             </span>
             <span className="w-14 shrink-0 text-right text-xs text-slate-400">
               {total > 0 ? `${((slice.value / total) * 100).toFixed(1)}%` : "—"}
