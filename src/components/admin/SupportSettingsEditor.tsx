@@ -15,9 +15,9 @@ export interface SupportSettingsInitial {
 }
 
 const field =
-  "w-full rounded-lg border border-white/15 bg-navy-900/80 px-3 py-2 text-sm text-white placeholder:text-white/30 outline-none focus:border-violet-500";
-const label = "block text-xs font-medium uppercase tracking-wide text-white/50";
-const hint = "mt-1 text-xs text-white/40";
+  "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:border-violet-500";
+const label = "block text-xs font-medium uppercase tracking-wide text-slate-500";
+const hint = "mt-1 text-xs text-slate-400";
 
 export function SupportSettingsEditor({ initial }: { initial: SupportSettingsInitial }) {
   const [values, setValues] = useState(initial);
@@ -52,7 +52,7 @@ export function SupportSettingsEditor({ initial }: { initial: SupportSettingsIni
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Support Contact Settings</h1>
-          <p className="mt-1 text-sm text-white/50">
+          <p className="mt-1 text-sm text-slate-500">
             Channels shown on the user Help page. Leave one blank to hide it — an empty channel
             would otherwise render as an option that goes nowhere.
           </p>
@@ -61,7 +61,7 @@ export function SupportSettingsEditor({ initial }: { initial: SupportSettingsIni
           <Link
             href="/dashboard/help"
             target="_blank"
-            className="flex items-center gap-1.5 text-sm font-medium text-violet-400 hover:underline"
+            className="flex items-center gap-1.5 text-sm font-medium text-violet-600 hover:underline"
           >
             View Help page
             <ExternalLink size={14} strokeWidth={2} />
@@ -80,15 +80,15 @@ export function SupportSettingsEditor({ initial }: { initial: SupportSettingsIni
         <div
           className={`rounded-xl border px-4 py-3 text-sm ${
             message.kind === "ok"
-              ? "border-cashlime-500/30 bg-cashlime-500/10 text-cashlime-300"
-              : "border-red-500/30 bg-red-500/10 text-red-300"
+              ? "border-cashlime-200 bg-cashlime-50 text-cashlime-700"
+              : "border-red-200 bg-red-50 text-red-600"
           }`}
         >
           {message.text}
         </div>
       )}
 
-      <section className="rounded-xl2 border border-white/10 p-5">
+      <section className="rounded-xl2 border border-slate-200 p-5">
         <h2 className="text-lg font-semibold">Channels</h2>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <div>
@@ -131,15 +131,15 @@ export function SupportSettingsEditor({ initial }: { initial: SupportSettingsIni
         </div>
       </section>
 
-      <section className="rounded-xl2 border border-white/10 p-5">
+      <section className="rounded-xl2 border border-slate-200 p-5">
         <h2 className="text-lg font-semibold">Live chat &amp; response time</h2>
         <div className="mt-4 space-y-4">
-          <label className="flex items-center gap-3 text-sm text-white/70">
+          <label className="flex items-center gap-3 text-sm text-slate-700">
             <input
               type="checkbox"
               checked={values.liveChatEnabled}
               onChange={(e) => set("liveChatEnabled", e.target.checked)}
-              className="h-4 w-4 rounded border-white/20 bg-navy-900"
+              className="h-4 w-4 rounded border-slate-300 bg-white"
             />
             Show a Live Chat option
           </label>

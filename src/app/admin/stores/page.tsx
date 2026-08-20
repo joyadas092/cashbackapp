@@ -15,9 +15,9 @@ export default async function AdminStoresPage() {
   return (
     <div>
       <h1 className="text-2xl font-bold">Stores</h1>
-      <div className="mt-6 overflow-x-auto rounded-xl2 border border-white/10">
+      <div className="mt-6 overflow-x-auto rounded-xl2 border border-slate-200">
         <table className="w-full text-left text-sm">
-          <thead className="bg-white/5 text-xs uppercase text-white/50">
+          <thead className="bg-slate-50 text-xs uppercase text-slate-500">
             <tr>
               <th className="px-4 py-3">Store</th>
               <th className="px-4 py-3">Category</th>
@@ -27,11 +27,11 @@ export default async function AdminStoresPage() {
               <th className="px-4 py-3">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-white/10">
+          <tbody className="divide-y divide-slate-200">
             {stores.map((store) => (
               <tr key={store.id}>
-                <td className="px-4 py-3 font-medium text-white">{store.name}</td>
-                <td className="px-4 py-3 text-white/60">{store.category.name}</td>
+                <td className="px-4 py-3 font-medium text-slate-900">{store.name}</td>
+                <td className="px-4 py-3 text-slate-600">{store.category.name}</td>
                 <td className="px-4 py-3">
                   <StoreLogoEditor storeId={store.id} logoUrl={store.logoUrl} />
                 </td>
@@ -39,14 +39,14 @@ export default async function AdminStoresPage() {
                   <span
                     className={
                       store.status === "ACTIVE"
-                        ? "rounded-full bg-cashlime-500/15 px-3 py-1 text-xs font-semibold text-cashlime-400"
-                        : "rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white/50"
+                        ? "rounded-full bg-cashlime-500/15 px-3 py-1 text-xs font-semibold text-cashlime-700"
+                        : "rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500"
                     }
                   >
                     {store.status}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-white/60">
+                <td className="px-4 py-3 text-slate-600">
                   {store.cashbackRules[0] ? "Configured" : "Not set"}
                 </td>
                 <td className="px-4 py-3">
@@ -54,13 +54,13 @@ export default async function AdminStoresPage() {
                     <StoreStatusToggle storeId={store.id} status={store.status} />
                     <Link
                       href={`/admin/stores/${store.id}/rates`}
-                      className="text-xs font-medium text-violet-400 hover:underline"
+                      className="text-xs font-medium text-violet-600 hover:underline"
                     >
                       Rates
                     </Link>
                     <Link
                       href={`/admin/stores/${store.id}/page-content`}
-                      className="text-xs font-medium text-violet-400 hover:underline"
+                      className="text-xs font-medium text-violet-600 hover:underline"
                     >
                       Page Content
                     </Link>

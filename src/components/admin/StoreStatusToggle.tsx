@@ -32,7 +32,7 @@ export function StoreStatusToggle({ storeId, status }: { storeId: string; status
       <Button variant={status === "ACTIVE" ? "outline" : "secondary"} size="sm" onClick={toggle} disabled={loading}>
         {loading ? "..." : status === "ACTIVE" ? "Deactivate" : "Activate"}
       </Button>
-      {error && <span className="text-xs text-red-400">{error}</span>}
+      {error && <span className="text-xs text-red-600">{error}</span>}
     </div>
   );
 }

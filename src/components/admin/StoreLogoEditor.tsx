@@ -49,7 +49,7 @@ export function StoreLogoEditor({ storeId, logoUrl }: { storeId: string; logoUrl
       <Button variant="outline" size="sm" onClick={handleSave} disabled={saving || value === logoUrl}>
         {saving ? "..." : "Save"}
       </Button>
-      {error && <span className="text-xs text-red-400">{error}</span>}
+      {error && <span className="text-xs text-red-600">{error}</span>}
     </div>
   );
 }

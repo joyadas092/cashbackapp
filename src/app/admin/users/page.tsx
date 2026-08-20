@@ -43,9 +43,9 @@ export default async function AdminUsersPage({
         <Input name="q" defaultValue={q} placeholder="Search by name or email" />
       </form>
 
-      <div className="mt-6 overflow-x-auto rounded-xl2 border border-white/10">
+      <div className="mt-6 overflow-x-auto rounded-xl2 border border-slate-200">
         <table className="w-full text-left text-sm">
-          <thead className="bg-white/5 text-xs uppercase text-white/50">
+          <thead className="bg-slate-50 text-xs uppercase text-slate-500">
             <tr>
               <th className="px-4 py-3">Name</th>
               <th className="px-4 py-3">Email</th>
@@ -54,18 +54,18 @@ export default async function AdminUsersPage({
               <th className="px-4 py-3">Joined</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-white/10">
+          <tbody className="divide-y divide-slate-200">
             {users.map((u) => (
               <tr key={u.id}>
                 <td className="px-4 py-3">
-                  <Link href={`/admin/users/${u.id}`} className="font-medium text-violet-400 hover:underline">
+                  <Link href={`/admin/users/${u.id}`} className="font-medium text-violet-600 hover:underline">
                     {u.name}
                   </Link>
                 </td>
-                <td className="px-4 py-3 text-white/60">{u.email}</td>
-                <td className="px-4 py-3 text-white/60">{u.role}</td>
-                <td className="px-4 py-3 text-white/60">{u.riskStatus}</td>
-                <td className="px-4 py-3 text-white/40">
+                <td className="px-4 py-3 text-slate-600">{u.email}</td>
+                <td className="px-4 py-3 text-slate-600">{u.role}</td>
+                <td className="px-4 py-3 text-slate-600">{u.riskStatus}</td>
+                <td className="px-4 py-3 text-slate-400">
                   {new Intl.DateTimeFormat("en-IN", { dateStyle: "medium" }).format(u.createdAt)}
                 </td>
               </tr>

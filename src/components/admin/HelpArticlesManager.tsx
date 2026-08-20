@@ -19,8 +19,8 @@ export interface AdminHelpArticle {
 }
 
 const field =
-  "w-full rounded-lg border border-white/15 bg-navy-900/80 px-3 py-2 text-sm text-white placeholder:text-white/30 outline-none focus:border-violet-500";
-const label = "block text-xs font-medium uppercase tracking-wide text-white/50";
+  "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:border-violet-500";
+const label = "block text-xs font-medium uppercase tracking-wide text-slate-500";
 
 const EMPTY: AdminHelpArticle = {
   id: "",
@@ -113,7 +113,7 @@ export function HelpArticlesManager({ articles }: { articles: AdminHelpArticle[]
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Help Articles &amp; FAQs</h1>
-          <p className="mt-1 text-sm text-white/50">
+          <p className="mt-1 text-sm text-slate-500">
             Articles show in the Help Center; FAQs show in the FAQs view. Popular ones are listed on
             the Help home page.
           </p>
@@ -131,8 +131,8 @@ export function HelpArticlesManager({ articles }: { articles: AdminHelpArticle[]
         <div
           className={`rounded-xl border px-4 py-3 text-sm ${
             message.kind === "ok"
-              ? "border-cashlime-500/30 bg-cashlime-500/10 text-cashlime-300"
-              : "border-red-500/30 bg-red-500/10 text-red-300"
+              ? "border-cashlime-200 bg-cashlime-50 text-cashlime-700"
+              : "border-red-200 bg-red-50 text-red-600"
           }`}
         >
           {message.text}
@@ -140,13 +140,13 @@ export function HelpArticlesManager({ articles }: { articles: AdminHelpArticle[]
       )}
 
       {draft && (
-        <section className="rounded-xl2 border border-violet-500/30 bg-violet-500/5 p-5">
+        <section className="rounded-xl2 border border-violet-200 bg-violet-50/60 p-5">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-lg font-semibold">{isNew ? "New article" : "Edit article"}</h2>
             <button
               onClick={() => setDraft(null)}
               aria-label="Close editor"
-              className="rounded-lg p-1.5 text-white/50 hover:bg-white/10 hover:text-white"
+              className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
             >
               <X size={16} strokeWidth={2} />
             </button>
@@ -222,7 +222,7 @@ export function HelpArticlesManager({ articles }: { articles: AdminHelpArticle[]
                 onChange={(e) => setDraft({ ...draft, body: e.target.value })}
                 placeholder="Plain text. Leave a blank line between paragraphs."
               />
-              <p className="mt-1 text-xs text-white/40">
+              <p className="mt-1 text-xs text-slate-400">
                 Rendered as plain paragraphs, never as HTML.
               </p>
             </div>
@@ -235,12 +235,12 @@ export function HelpArticlesManager({ articles }: { articles: AdminHelpArticle[]
                   ["isPublished", "Published"],
                 ] as const
               ).map(([key, text]) => (
-                <label key={key} className="flex items-center gap-2 text-sm text-white/70">
+                <label key={key} className="flex items-center gap-2 text-sm text-slate-700">
                   <input
                     type="checkbox"
                     checked={draft[key]}
                     onChange={(e) => setDraft({ ...draft, [key]: e.target.checked })}
-                    className="h-4 w-4 rounded border-white/20 bg-navy-900"
+                    className="h-4 w-4 rounded border-slate-300 bg-white"
                   />
                   {text}
                 </label>
@@ -258,7 +258,7 @@ export function HelpArticlesManager({ articles }: { articles: AdminHelpArticle[]
             </button>
             <button
               onClick={() => setDraft(null)}
-              className="rounded-full border border-white/15 px-6 py-2.5 text-sm font-medium hover:bg-white/5"
+              className="rounded-full border border-slate-300 px-6 py-2.5 text-sm font-medium hover:bg-slate-50"
             >
               Cancel
             </button>
@@ -266,9 +266,9 @@ export function HelpArticlesManager({ articles }: { articles: AdminHelpArticle[]
         </section>
       )}
 
-      <div className="overflow-x-auto rounded-xl2 border border-white/10">
+      <div className="overflow-x-auto rounded-xl2 border border-slate-200">
         <table className="w-full min-w-[860px] text-left text-sm">
-          <thead className="bg-white/5 text-xs uppercase text-white/50">
+          <thead className="bg-slate-50 text-xs uppercase text-slate-500">
             <tr>
               <th className="px-4 py-3">Title</th>
               <th className="px-4 py-3">Category</th>
@@ -278,40 +278,40 @@ export function HelpArticlesManager({ articles }: { articles: AdminHelpArticle[]
               <th className="px-4 py-3">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-white/10">
+          <tbody className="divide-y divide-slate-200">
             {articles.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-10 text-center text-white/40">
+                <td colSpan={6} className="px-4 py-10 text-center text-slate-400">
                   No articles yet.
                 </td>
               </tr>
             )}
             {articles.map((article) => (
-              <tr key={article.id} className="hover:bg-white/5">
+              <tr key={article.id} className="hover:bg-slate-50">
                 <td className="px-4 py-3">
-                  <div className="font-medium text-white">{article.title}</div>
-                  <div className="font-mono text-xs text-white/40">/{article.slug}</div>
+                  <div className="font-medium text-slate-900">{article.title}</div>
+                  <div className="font-mono text-xs text-slate-400">/{article.slug}</div>
                 </td>
-                <td className="px-4 py-3 text-white/60">{article.category}</td>
+                <td className="px-4 py-3 text-slate-600">{article.category}</td>
                 <td className="px-4 py-3">
                   <div className="flex flex-wrap gap-1.5">
-                    <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs text-white/60">
+                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
                       {article.isFaq ? "FAQ" : "Article"}
                     </span>
                     {article.isPopular && (
-                      <span className="rounded-full bg-violet-500/15 px-2 py-0.5 text-xs text-violet-300">
+                      <span className="rounded-full bg-violet-500/15 px-2 py-0.5 text-xs text-violet-700">
                         Popular
                       </span>
                     )}
                   </div>
                 </td>
-                <td className="px-4 py-3 text-white/60">{article.viewCount}</td>
+                <td className="px-4 py-3 text-slate-600">{article.viewCount}</td>
                 <td className="px-4 py-3">
                   <span
                     className={
                       article.isPublished
-                        ? "rounded-full bg-cashlime-500/15 px-2.5 py-1 text-xs font-semibold text-cashlime-300"
-                        : "rounded-full bg-white/10 px-2.5 py-1 text-xs font-semibold text-white/50"
+                        ? "rounded-full bg-cashlime-500/15 px-2.5 py-1 text-xs font-semibold text-cashlime-700"
+                        : "rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-500"
                     }
                   >
                     {article.isPublished ? "Published" : "Draft"}
@@ -322,7 +322,7 @@ export function HelpArticlesManager({ articles }: { articles: AdminHelpArticle[]
                     <button
                       onClick={() => setDraft({ ...article })}
                       title="Edit"
-                      className="rounded-lg border border-white/15 p-2 hover:bg-white/5"
+                      className="rounded-lg border border-slate-300 p-2 hover:bg-slate-50"
                     >
                       <Pencil size={13} strokeWidth={2} />
                     </button>
@@ -330,7 +330,7 @@ export function HelpArticlesManager({ articles }: { articles: AdminHelpArticle[]
                       onClick={() => remove(article)}
                       disabled={deletingId === article.id}
                       title="Delete"
-                      className="rounded-lg border border-white/15 p-2 text-red-400 hover:bg-red-500/10 disabled:opacity-40"
+                      className="rounded-lg border border-slate-300 p-2 text-red-600 hover:bg-red-50 disabled:opacity-40"
                     >
                       <Trash2 size={13} strokeWidth={2} />
                     </button>

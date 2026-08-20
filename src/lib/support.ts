@@ -13,30 +13,16 @@ export function generateTicketNumber(): string {
   return `TKT-${n}`;
 }
 
-export const TICKET_STATUS_META: Record<
-  TicketStatus,
-  { label: string; tone: string; adminTone: string }
-> = {
-  OPEN: {
-    label: "Open",
-    tone: "bg-sky-50 text-sky-700",
-    adminTone: "bg-sky-500/15 text-sky-300",
-  },
-  IN_PROGRESS: {
-    label: "In Progress",
-    tone: "bg-amber-50 text-amber-700",
-    adminTone: "bg-amber-500/15 text-amber-300",
-  },
-  RESOLVED: {
-    label: "Resolved",
-    tone: "bg-cashlime-50 text-cashlime-700",
-    adminTone: "bg-cashlime-500/15 text-cashlime-300",
-  },
-  CLOSED: {
-    label: "Closed",
-    tone: "bg-slate-100 text-slate-500",
-    adminTone: "bg-white/10 text-white/50",
-  },
+/**
+ * The admin panel used to be dark and needed its own palette here. It is light
+ * now, so both surfaces share one set of tones rather than keeping a second
+ * copy that can drift.
+ */
+export const TICKET_STATUS_META: Record<TicketStatus, { label: string; tone: string }> = {
+  OPEN: { label: "Open", tone: "bg-sky-50 text-sky-700" },
+  IN_PROGRESS: { label: "In Progress", tone: "bg-amber-50 text-amber-700" },
+  RESOLVED: { label: "Resolved", tone: "bg-cashlime-50 text-cashlime-700" },
+  CLOSED: { label: "Closed", tone: "bg-slate-100 text-slate-500" },
 };
 
 /** Categories a user can file a ticket under. Kept in one place so the form,

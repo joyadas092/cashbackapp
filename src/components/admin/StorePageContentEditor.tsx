@@ -37,8 +37,8 @@ export interface StorePageContentEditorProps {
 }
 
 const field =
-  "w-full rounded-lg border border-white/15 bg-navy-900/80 px-3 py-2 text-sm text-white placeholder:text-white/30 outline-none focus:border-violet-500";
-const label = "block text-xs font-medium uppercase tracking-wide text-white/50";
+  "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:border-violet-500";
+const label = "block text-xs font-medium uppercase tracking-wide text-slate-500";
 
 /** Move an item within a list, returning a new array. */
 function move<T>(list: T[], from: number, to: number): T[] {
@@ -120,7 +120,7 @@ export function StorePageContentEditor({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">{storeName} — Page Content</h1>
-          <p className="mt-1 text-sm text-white/50">
+          <p className="mt-1 text-sm text-slate-500">
             Everything here is per-store. Cuelinks supplies a single flat rate and no coupons, so
             this content is maintained here.
           </p>
@@ -129,7 +129,7 @@ export function StorePageContentEditor({
           <Link
             href={`/stores/${storeSlug}`}
             target="_blank"
-            className="flex items-center gap-1.5 text-sm font-medium text-violet-400 hover:underline"
+            className="flex items-center gap-1.5 text-sm font-medium text-violet-600 hover:underline"
           >
             View page
             <ExternalLink size={14} strokeWidth={2} />
@@ -148,8 +148,8 @@ export function StorePageContentEditor({
         <div
           className={`rounded-xl border px-4 py-3 text-sm ${
             message.kind === "ok"
-              ? "border-cashlime-500/30 bg-cashlime-500/10 text-cashlime-300"
-              : "border-red-500/30 bg-red-500/10 text-red-300"
+              ? "border-cashlime-200 bg-cashlime-50 text-cashlime-700"
+              : "border-red-200 bg-red-50 text-red-600"
           }`}
         >
           {message.text}
@@ -157,7 +157,7 @@ export function StorePageContentEditor({
       )}
 
       {/* --- Header block --- */}
-      <section className="rounded-xl2 border border-white/10 p-5">
+      <section className="rounded-xl2 border border-slate-200 p-5">
         <h2 className="text-lg font-semibold">Header</h2>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2">
@@ -178,7 +178,7 @@ export function StorePageContentEditor({
               placeholder="6"
               inputMode="decimal"
             />
-            <p className="mt-1 text-xs text-white/40">
+            <p className="mt-1 text-xs text-slate-400">
               The chip only appears when the current rate is higher than this.
             </p>
           </div>
@@ -213,17 +213,17 @@ export function StorePageContentEditor({
       </section>
 
       {/* --- Cashback rate table --- */}
-      <section className="rounded-xl2 border border-white/10 p-5">
+      <section className="rounded-xl2 border border-slate-200 p-5">
         <div className="flex items-center justify-between gap-4">
           <div>
             <h2 className="text-lg font-semibold">Cashback Rates by Category</h2>
-            <p className="mt-1 text-sm text-white/50">
+            <p className="mt-1 text-sm text-slate-500">
               The sidebar table. Leave empty to fall back to the store&apos;s single headline rate.
             </p>
           </div>
           <button
             onClick={() => setRates([...rates, { label: "", displayText: "" }])}
-            className="flex shrink-0 items-center gap-1.5 rounded-full border border-white/15 px-4 py-2 text-sm font-medium hover:bg-white/5"
+            className="flex shrink-0 items-center gap-1.5 rounded-full border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-50"
           >
             <Plus size={15} strokeWidth={2.5} />
             Add row
@@ -232,7 +232,7 @@ export function StorePageContentEditor({
 
         <div className="mt-4 space-y-2">
           {rates.length === 0 && (
-            <p className="text-sm text-white/40">No category rates yet.</p>
+            <p className="text-sm text-slate-400">No category rates yet.</p>
           )}
           {rates.map((rate, i) => (
             <div key={i} className="flex items-center gap-2">
@@ -258,7 +258,7 @@ export function StorePageContentEditor({
                 onClick={() => setRates(move(rates, i, i - 1))}
                 disabled={i === 0}
                 title="Move up"
-                className="rounded-lg border border-white/15 p-2 hover:bg-white/5 disabled:opacity-30"
+                className="rounded-lg border border-slate-300 p-2 hover:bg-slate-50 disabled:opacity-30"
               >
                 <ArrowUp size={14} strokeWidth={2} />
               </button>
@@ -266,14 +266,14 @@ export function StorePageContentEditor({
                 onClick={() => setRates(move(rates, i, i + 1))}
                 disabled={i === rates.length - 1}
                 title="Move down"
-                className="rounded-lg border border-white/15 p-2 hover:bg-white/5 disabled:opacity-30"
+                className="rounded-lg border border-slate-300 p-2 hover:bg-slate-50 disabled:opacity-30"
               >
                 <ArrowDown size={14} strokeWidth={2} />
               </button>
               <button
                 onClick={() => setRates(rates.filter((_, j) => j !== i))}
                 title="Remove"
-                className="rounded-lg border border-white/15 p-2 text-red-400 hover:bg-red-500/10"
+                className="rounded-lg border border-slate-300 p-2 text-red-600 hover:bg-red-50"
               >
                 <Trash2 size={14} strokeWidth={2} />
               </button>
@@ -283,11 +283,11 @@ export function StorePageContentEditor({
       </section>
 
       {/* --- Offers --- */}
-      <section className="rounded-xl2 border border-white/10 p-5">
+      <section className="rounded-xl2 border border-slate-200 p-5">
         <div className="flex items-center justify-between gap-4">
           <div>
             <h2 className="text-lg font-semibold">Best Offers for You</h2>
-            <p className="mt-1 text-sm text-white/50">
+            <p className="mt-1 text-sm text-slate-500">
               Coupon cards in the sidebar. Cuelinks returns no offers for most of our campaigns.
             </p>
           </div>
@@ -298,7 +298,7 @@ export function StorePageContentEditor({
                 { badge: "EXTRA", title: "", description: "", code: "", validTill: "" },
               ])
             }
-            className="flex shrink-0 items-center gap-1.5 rounded-full border border-white/15 px-4 py-2 text-sm font-medium hover:bg-white/5"
+            className="flex shrink-0 items-center gap-1.5 rounded-full border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-50"
           >
             <Plus size={15} strokeWidth={2.5} />
             Add offer
@@ -306,9 +306,9 @@ export function StorePageContentEditor({
         </div>
 
         <div className="mt-4 space-y-3">
-          {offers.length === 0 && <p className="text-sm text-white/40">No offers yet.</p>}
+          {offers.length === 0 && <p className="text-sm text-slate-400">No offers yet.</p>}
           {offers.map((offer, i) => (
-            <div key={i} className="rounded-xl border border-white/10 p-3">
+            <div key={i} className="rounded-xl border border-slate-200 p-3">
               <div className="grid gap-2 sm:grid-cols-[100px_1fr_140px]">
                 <input
                   className={field}
@@ -361,7 +361,7 @@ export function StorePageContentEditor({
                     onClick={() => setOffers(move(offers, i, i - 1))}
                     disabled={i === 0}
                     title="Move up"
-                    className="rounded-lg border border-white/15 p-2 hover:bg-white/5 disabled:opacity-30"
+                    className="rounded-lg border border-slate-300 p-2 hover:bg-slate-50 disabled:opacity-30"
                   >
                     <ArrowUp size={14} strokeWidth={2} />
                   </button>
@@ -369,14 +369,14 @@ export function StorePageContentEditor({
                     onClick={() => setOffers(move(offers, i, i + 1))}
                     disabled={i === offers.length - 1}
                     title="Move down"
-                    className="rounded-lg border border-white/15 p-2 hover:bg-white/5 disabled:opacity-30"
+                    className="rounded-lg border border-slate-300 p-2 hover:bg-slate-50 disabled:opacity-30"
                   >
                     <ArrowDown size={14} strokeWidth={2} />
                   </button>
                   <button
                     onClick={() => setOffers(offers.filter((_, j) => j !== i))}
                     title="Remove"
-                    className="rounded-lg border border-white/15 p-2 text-red-400 hover:bg-red-500/10"
+                    className="rounded-lg border border-slate-300 p-2 text-red-600 hover:bg-red-50"
                   >
                     <Trash2 size={14} strokeWidth={2} />
                   </button>
@@ -388,17 +388,17 @@ export function StorePageContentEditor({
       </section>
 
       {/* --- Important tips --- */}
-      <section className="rounded-xl2 border border-white/10 p-5">
+      <section className="rounded-xl2 border border-slate-200 p-5">
         <div className="flex items-center justify-between gap-4">
           <div>
             <h2 className="text-lg font-semibold">Important Tips</h2>
-            <p className="mt-1 text-sm text-white/50">
+            <p className="mt-1 text-sm text-slate-500">
               The green checklist. Leave empty to use the standard set.
             </p>
           </div>
           <button
             onClick={() => setTips([...tips, ""])}
-            className="flex shrink-0 items-center gap-1.5 rounded-full border border-white/15 px-4 py-2 text-sm font-medium hover:bg-white/5"
+            className="flex shrink-0 items-center gap-1.5 rounded-full border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-50"
           >
             <Plus size={15} strokeWidth={2.5} />
             Add tip
@@ -407,7 +407,7 @@ export function StorePageContentEditor({
 
         <div className="mt-4 space-y-2">
           {tips.length === 0 && (
-            <p className="text-sm text-white/40">Using the standard tips.</p>
+            <p className="text-sm text-slate-400">Using the standard tips.</p>
           )}
           {tips.map((tip, i) => (
             <div key={i} className="flex items-center gap-2">
@@ -420,7 +420,7 @@ export function StorePageContentEditor({
               <button
                 onClick={() => setTips(tips.filter((_, j) => j !== i))}
                 title="Remove"
-                className="rounded-lg border border-white/15 p-2 text-red-400 hover:bg-red-500/10"
+                className="rounded-lg border border-slate-300 p-2 text-red-600 hover:bg-red-50"
               >
                 <Trash2 size={14} strokeWidth={2} />
               </button>
@@ -430,7 +430,7 @@ export function StorePageContentEditor({
       </section>
 
       {/* --- Long-form tab copy --- */}
-      <section className="rounded-xl2 border border-white/10 p-5">
+      <section className="rounded-xl2 border border-slate-200 p-5">
         <h2 className="text-lg font-semibold">Tab Content</h2>
         <div className="mt-4 space-y-4">
           <div>

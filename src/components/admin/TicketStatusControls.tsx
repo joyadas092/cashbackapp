@@ -7,7 +7,7 @@ const STATUSES = ["OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED"] as const;
 const PRIORITIES = ["LOW", "NORMAL", "HIGH", "URGENT"] as const;
 
 const select =
-  "rounded-lg border border-white/15 bg-navy-900/80 px-3 py-2 text-sm text-white outline-none focus:border-violet-500";
+  "rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-violet-500";
 
 export function TicketStatusControls({
   ticketId,
@@ -43,7 +43,7 @@ export function TicketStatusControls({
 
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <label className="flex items-center gap-2 text-sm text-white/60">
+      <label className="flex items-center gap-2 text-sm text-slate-600">
         Status
         <select
           value={status}
@@ -59,7 +59,7 @@ export function TicketStatusControls({
         </select>
       </label>
 
-      <label className="flex items-center gap-2 text-sm text-white/60">
+      <label className="flex items-center gap-2 text-sm text-slate-600">
         Priority
         <select
           value={priority}
@@ -75,7 +75,7 @@ export function TicketStatusControls({
         </select>
       </label>
 
-      {error && <span className="text-sm text-red-300">{error}</span>}
+      {error && <span className="text-sm text-red-600">{error}</span>}
     </div>
   );
 }

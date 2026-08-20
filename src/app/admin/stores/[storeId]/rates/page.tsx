@@ -14,7 +14,7 @@ export default async function AdminStoreRatesPage({ params }: { params: { storeI
   return (
     <div>
       <h1 className="text-2xl font-bold">{store.name} — Commission Rates</h1>
-      <p className="mt-1 text-sm text-white/60">
+      <p className="mt-1 text-sm text-slate-600">
         Customer + Profit Link + Referral + Platform must not exceed 100%.
       </p>
 

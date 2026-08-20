@@ -16,7 +16,7 @@ export default async function AdminCampaignsPage() {
   return (
     <div>
       <h1 className="text-2xl font-bold">Cuelinks Campaigns</h1>
-      <p className="mt-1 text-sm text-white/60">
+      <p className="mt-1 text-sm text-slate-600">
         Browse campaigns available on your Cuelinks account and link or import them as stores.
       </p>
       <div className="mt-6">

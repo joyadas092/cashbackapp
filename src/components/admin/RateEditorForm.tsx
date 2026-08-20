@@ -49,8 +49,8 @@ export function RateEditorForm({
         <Button variant="outline" onClick={() => setRule(initial ?? DEFAULT_RULE)}>
           Reset
         </Button>
-        {saved && <span className="text-sm text-cashlime-400">Saved.</span>}
-        {error && <span className="text-sm text-red-400">{error}</span>}
+        {saved && <span className="text-sm text-cashlime-700">Saved.</span>}
+        {error && <span className="text-sm text-red-600">{error}</span>}
       </div>
     </div>
   );
