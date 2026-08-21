@@ -82,7 +82,13 @@ export default async function AdminClicksPage({
       include: {
         store: { select: { name: true, slug: true, logoUrl: true } },
         user: { select: { id: true, name: true } },
-        profitLink: { select: { code: true, user: { select: { name: true } } } },
+        profitLink: {
+          select: {
+            code: true,
+            source: true,
+            user: { select: { name: true, username: true, userCode: true } },
+          },
+        },
         _count: { select: { transactions: true } },
       },
     }),
@@ -200,7 +206,19 @@ export default async function AdminClicksPage({
                       </span>
                     </td>
                     <td className="px-5 py-3">
-                      <AdminBadge label={meta.label} tone={meta.tone} />
+                      {/* goURL clicks are profit-link clicks, but they arrive
+                          from someone typing an address rather than following a
+                          generated link, so they are labelled apart. */}
+                      <AdminBadge
+                        label={
+                          click.profitLink?.source === "GO_URL" ? "goURL" : meta.label
+                        }
+                        tone={
+                          click.profitLink?.source === "GO_URL"
+                            ? "bg-violet-100 text-violet-800"
+                            : meta.tone
+                        }
+                      />
                     </td>
                     <td className="px-5 py-3">
                       {viaProfitLink ? (
@@ -209,7 +227,9 @@ export default async function AdminClicksPage({
                             Shared by {click.profitLink?.user.name ?? "—"}
                           </span>
                           <span className="block font-mono text-xs text-slate-400">
-                            {click.profitLink?.code}
+                            {click.profitLink?.source === "GO_URL"
+                              ? `/go/${click.profitLink.user.username ?? click.profitLink.user.userCode}/${click.store.slug}`
+                              : click.profitLink?.code}
                           </span>
                         </>
                       ) : (

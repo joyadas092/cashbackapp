@@ -82,9 +82,16 @@ export default async function AdminAffiliatePage({
 
   const affiliateFilter = { profitLinks: { some: {} }, ...userMatch };
 
+  // Go links and hand-made Share & Earn links behave identically once created,
+  // but they arrive very differently, so the report can be narrowed to either.
+  const sourceParam = one("source");
+  const linkSource =
+    sourceParam === "GO_URL" || sourceParam === "MANUAL" ? sourceParam : undefined;
+
   const linkWhere: Prisma.ProfitLinkWhereInput = {
     ...(createdAtFilter ? { createdAt: createdAtFilter } : {}),
     ...(query ? { user: userMatch } : {}),
+    ...(linkSource ? { source: linkSource } : {}),
   };
   const profitClick = { clickType: "PROFIT_LINK" as const };
 
@@ -177,8 +184,9 @@ export default async function AdminAffiliatePage({
       select: {
         id: true,
         code: true,
+        source: true,
         createdAt: true,
-        user: { select: { id: true, name: true, email: true } },
+        user: { select: { id: true, name: true, email: true, username: true, userCode: true } },
         store: { select: { name: true, slug: true } },
       },
     }),
@@ -316,6 +324,7 @@ export default async function AdminAffiliatePage({
   const buildHref = (overrides: Record<string, string | number>) => {
     const params = new URLSearchParams();
     if (query) params.set("q", query);
+    if (linkSource) params.set("source", linkSource);
     dateRangeToParams(range, params);
     if (page > 1) params.set("page", String(page));
     if (linkPage > 1) params.set("lpage", String(linkPage));
@@ -520,7 +529,22 @@ export default async function AdminAffiliatePage({
             />
           </div>
 
-          <DateRangeFilter range={range} basePath="/admin/affiliate" hiddenFields={{ q: query }} />
+          <select
+            name="source"
+            defaultValue={linkSource ?? "all"}
+            aria-label="Filter by link type"
+            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-violet-400"
+          >
+            <option value="all">All link types</option>
+            <option value="GO_URL">goURL only</option>
+            <option value="MANUAL">Share &amp; Earn only</option>
+          </select>
+
+          <DateRangeFilter
+            range={range}
+            basePath="/admin/affiliate"
+            hiddenFields={{ q: query, source: linkSource ?? "" }}
+          />
 
           <button
             type="submit"
@@ -529,7 +553,7 @@ export default async function AdminAffiliatePage({
             Apply
           </button>
 
-          {(query || isDateRangeActive(range)) && (
+          {(query || linkSource || isDateRangeActive(range)) && (
             <Link
               href="/admin/affiliate"
               className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"
@@ -559,6 +583,7 @@ export default async function AdminAffiliatePage({
                 <tr className="border-b border-slate-100">
                   <AdminTh>Affiliate</AdminTh>
                   <AdminTh>Store</AdminTh>
+                  <AdminTh>Type</AdminTh>
                   <AdminTh>Link</AdminTh>
                   <AdminTh align="right">Clicks</AdminTh>
                   <AdminTh align="right">Orders</AdminTh>
@@ -574,7 +599,14 @@ export default async function AdminAffiliatePage({
                   // Undefined, not zero, when nobody has clicked — a 0.00%
                   // conversion rate on zero clicks is a made-up number.
                   const conversion = clicks > 0 ? (orders / clicks) * 100 : null;
-                  const shareUrl = `${shareBase}/p/${link.code}`;
+                  // A goURL's own address is the memorable one its owner
+                  // actually shares, so show that rather than the /p/<code>
+                  // form, which they may never have seen.
+                  const isGoLink = link.source === "GO_URL";
+                  const handle = link.user.username ?? link.user.userCode;
+                  const shareUrl = isGoLink
+                    ? `${shareBase}/go/${handle}/${link.store.slug}`
+                    : `${shareBase}/p/${link.code}`;
 
                   return (
                     <tr key={link.id} className="hover:bg-slate-50/60">
@@ -593,6 +625,16 @@ export default async function AdminAffiliatePage({
                         </Link>
                       </td>
                       <td className="px-5 py-3 text-slate-600">{link.store.name}</td>
+                      <td className="px-5 py-3">
+                        <AdminBadge
+                          label={isGoLink ? "goURL" : "Share & Earn"}
+                          tone={
+                            isGoLink
+                              ? "bg-violet-50 text-violet-700"
+                              : "bg-slate-100 text-slate-600"
+                          }
+                        />
+                      </td>
                       <td className="px-5 py-3">
                         <a
                           href={shareUrl}

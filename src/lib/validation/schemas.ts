@@ -147,6 +147,18 @@ export const accountUpdateSchema = z.object({
     .transform((v) => (v === "" ? null : v.replace(/^\+91/, "")))
     .nullable()
     .optional(),
+  /**
+   * goURL handle. Shape is checked here; reserved words and availability need
+   * the database, so those are enforced in the route.
+   */
+  username: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .min(3, "Use at least 3 characters")
+    .max(20, "Use at most 20 characters")
+    .regex(/^[a-z0-9]+$/, "Use lowercase letters and numbers only, with no spaces")
+    .optional(),
 });
 export type AccountUpdateInput = z.infer<typeof accountUpdateSchema>;
 

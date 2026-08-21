@@ -26,6 +26,17 @@ export interface PlatformSettings {
   /** Gates referral capture at signup. */
   referralEnabled: boolean;
 
+  // --- Share & Earn --------------------------------------------------------
+  /**
+   * Who receives the customer's cashback share when a purchase comes through a
+   * shared profit link and the buyer has no account.
+   *
+   * There is no shopper to pay in that case, so the share is unclaimed.
+   * "SHARER" hands it to the person whose link produced the sale, on top of
+   * their own profit-link share; "PLATFORM" keeps it.
+   */
+  profitLinkGuestCashback: "SHARER" | "PLATFORM";
+
   // --- Payouts -------------------------------------------------------------
   minWithdrawalAmount: number;
   maxWithdrawalAmount: number;
@@ -56,6 +67,10 @@ export const DEFAULT_SETTINGS: PlatformSettings = {
   affiliateEnabled: true,
   referralEnabled: true,
 
+  // The sharer did the work that produced the sale, and no shopper exists to
+  // pay, so the share follows the effort by default.
+  profitLinkGuestCashback: "SHARER",
+
   // Kept as its own row for backwards compatibility: the withdrawal endpoint
   // and wallet page already read `min_withdrawal_amount` directly.
   minWithdrawalAmount: 100,
@@ -80,6 +95,7 @@ export const SETTING_KEYS: Record<keyof PlatformSettings, string> = {
   maintenanceMessage: "maintenance_message",
   affiliateEnabled: "affiliate_enabled",
   referralEnabled: "referral_enabled",
+  profitLinkGuestCashback: "profit_link_guest_cashback",
   minWithdrawalAmount: "min_withdrawal_amount",
   maxWithdrawalAmount: "max_withdrawal_amount",
   payoutMethods: "payout_methods",
@@ -106,6 +122,11 @@ function coerce<K extends keyof PlatformSettings>(
   }
   if (Array.isArray(fallback)) {
     return (Array.isArray(raw) ? raw : fallback) as PlatformSettings[K];
+  }
+  // This one decides where money goes, so an unrecognised value falls back to
+  // the default rather than being passed through as an arbitrary string.
+  if (key === "profitLinkGuestCashback") {
+    return (raw === "SHARER" || raw === "PLATFORM" ? raw : fallback) as PlatformSettings[K];
   }
   return (typeof raw === "string" ? raw : fallback) as PlatformSettings[K];
 }

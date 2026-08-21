@@ -52,10 +52,46 @@ async function createUserWithWallet(emailPrefix: string) {
       passwordHash: "x",
       name: emailPrefix,
       referralCode: `${emailPrefix}${Math.floor(Math.random() * 10000)}`.slice(0, 10).toUpperCase(),
+      userCode: `${emailPrefix}${Math.floor(Math.random() * 1000000)}`.slice(0, 12).toLowerCase(),
     },
   });
   const wallet = await prisma.wallet.create({ data: { userId: user.id } });
   return { user, wallet };
+}
+
+/**
+ * A profit-link click with no signed-in buyer — the guest case the
+ * profitLinkGuestCashback setting governs.
+ */
+async function createGuestProfitLinkClick(creatorId: string) {
+  const profitLink = await prisma.profitLink.create({
+    data: {
+      code: `pl${Math.floor(Math.random() * 100000)}`,
+      userId: creatorId,
+      storeId,
+      originalUrl: "https://example.com/product",
+      destinationUrl: "https://example.com/product",
+    },
+  });
+
+  return prisma.click.create({
+    data: {
+      userId: null,
+      storeId,
+      clickType: "PROFIT_LINK",
+      profitLinkId: profitLink.id,
+      originalUrl: "https://example.com/product",
+      trackingUrl: "https://stub.cuelinks.local/track",
+    },
+  });
+}
+
+async function setGuestCashbackDestination(value: "SHARER" | "PLATFORM") {
+  await prisma.setting.upsert({
+    where: { key: "profit_link_guest_cashback" },
+    update: { value },
+    create: { key: "profit_link_guest_cashback", value },
+  });
 }
 
 function basePayload(overrides: Record<string, string | undefined>) {
@@ -276,6 +312,112 @@ describe("processCuelinksPostback (integration)", () => {
     expect(reversal.body.status).toBe("applied");
 
     wallet = await prisma.wallet.findUniqueOrThrow({ where: { id: buyerWallet.id } });
+    expect(Number(wallet.confirmedBalance)).toBe(0);
+    expect(Number(wallet.availableBalance)).toBe(0);
+    expect(Number(wallet.lifetimeEarned)).toBe(0);
+  });
+
+  it("pays a guest profit-link sale's unclaimed cashback share to the sharer", async () => {
+    // Nobody bought as a member, so the customer share has no shopper to go to.
+    // The default setting hands it to the person whose link produced the sale.
+    await setGuestCashbackDestination("SHARER");
+    await createStore({ customerPct: 60, profitLinkPct: 15, referralPct: 5, platformPct: 20 });
+    const { user: creator, wallet: creatorWallet } = await createUserWithWallet("creator");
+
+    const click = await createGuestProfitLinkClick(creator.id);
+
+    const result = await processCuelinksPostback(basePayload({ click_id: `c_${click.id}` }));
+    expect(result.body.status).toBe("applied");
+
+    const wallet = await prisma.wallet.findUniqueOrThrow({ where: { id: creatorWallet.id } });
+    // 15% profit-link share + the 60% nobody claimed.
+    expect(Number(wallet.confirmedBalance)).toBe(75);
+
+    // The stored split must say the same thing the wallet does, so reports and
+    // reversals agree with what was actually paid.
+    const tx = await prisma.transaction.findFirstOrThrow({ where: { clickId: click.id } });
+    expect(Number(tx.profitLinkAmount)).toBe(75);
+    expect(Number(tx.customerAmount)).toBe(0);
+    expect(Number(tx.platformAmount)).toBe(20);
+  });
+
+  it("keeps the unclaimed share as platform margin when configured to", async () => {
+    await setGuestCashbackDestination("PLATFORM");
+    await createStore({ customerPct: 60, profitLinkPct: 15, referralPct: 5, platformPct: 20 });
+    const { user: creator, wallet: creatorWallet } = await createUserWithWallet("creator");
+
+    const click = await createGuestProfitLinkClick(creator.id);
+    await processCuelinksPostback(basePayload({ click_id: `c_${click.id}` }));
+
+    const wallet = await prisma.wallet.findUniqueOrThrow({ where: { id: creatorWallet.id } });
+    expect(Number(wallet.confirmedBalance)).toBe(15);
+
+    const tx = await prisma.transaction.findFirstOrThrow({ where: { clickId: click.id } });
+    expect(Number(tx.customerAmount)).toBe(0);
+    // The 60% is attributed to the platform rather than left showing as a
+    // customer amount that was never paid.
+    expect(Number(tx.platformAmount)).toBe(80);
+  });
+
+  it("leaves a signed-in buyer's cashback alone on a profit-link sale", async () => {
+    // The setting only governs the guest case: there is a shopper here, so they
+    // get their cashback and the sharer gets only the profit-link share.
+    await setGuestCashbackDestination("SHARER");
+    await createStore({ customerPct: 60, profitLinkPct: 15, referralPct: 5, platformPct: 20 });
+    const { user: creator, wallet: creatorWallet } = await createUserWithWallet("creator");
+    const { user: buyer, wallet: buyerWallet } = await createUserWithWallet("buyer");
+
+    const profitLink = await prisma.profitLink.create({
+      data: {
+        code: `pl${Math.floor(Math.random() * 100000)}`,
+        userId: creator.id,
+        storeId,
+        originalUrl: "https://example.com/product",
+        destinationUrl: "https://example.com/product",
+      },
+    });
+    const click = await prisma.click.create({
+      data: {
+        userId: buyer.id,
+        storeId,
+        clickType: "PROFIT_LINK",
+        profitLinkId: profitLink.id,
+        originalUrl: "https://example.com/product",
+        trackingUrl: "https://stub.cuelinks.local/track",
+      },
+    });
+
+    await processCuelinksPostback(basePayload({ click_id: `c_${click.id}` }));
+
+    expect(
+      Number((await prisma.wallet.findUniqueOrThrow({ where: { id: creatorWallet.id } })).confirmedBalance)
+    ).toBe(15);
+    expect(
+      Number((await prisma.wallet.findUniqueOrThrow({ where: { id: buyerWallet.id } })).confirmedBalance)
+    ).toBe(60);
+  });
+
+  it("reverses the sharer's combined guest-sale earning in full", async () => {
+    await setGuestCashbackDestination("SHARER");
+    await createStore({ customerPct: 60, profitLinkPct: 15, referralPct: 5, platformPct: 20 });
+    const { user: creator, wallet: creatorWallet } = await createUserWithWallet("creator");
+
+    const click = await createGuestProfitLinkClick(creator.id);
+    const orderId = `order-${Date.now()}-${Math.random()}`;
+
+    await processCuelinksPostback(
+      basePayload({ click_id: `c_${click.id}`, merchant_transaction_id: orderId })
+    );
+    expect(
+      Number((await prisma.wallet.findUniqueOrThrow({ where: { id: creatorWallet.id } })).confirmedBalance)
+    ).toBe(75);
+
+    await processCuelinksPostback(
+      basePayload({ click_id: `c_${click.id}`, merchant_transaction_id: orderId, status: "reversed" })
+    );
+
+    // All 75 comes back, not just the 15 the profit-link share would have been.
+    const wallet = await prisma.wallet.findUniqueOrThrow({ where: { id: creatorWallet.id } });
     expect(Number(wallet.confirmedBalance)).toBe(0);
     expect(Number(wallet.availableBalance)).toBe(0);
     expect(Number(wallet.lifetimeEarned)).toBe(0);

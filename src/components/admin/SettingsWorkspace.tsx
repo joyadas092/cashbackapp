@@ -17,6 +17,7 @@ export interface SettingsValues {
   referralEnabled: boolean;
   minWithdrawalAmount: number;
   maxWithdrawalAmount: number;
+  profitLinkGuestCashback: "SHARER" | "PLATFORM";
   panRequiredAboveAmount: number;
   payoutMethods: string[];
   seoTitle: string;
@@ -306,6 +307,66 @@ export function SettingsWorkspace({
                 "maintenanceMessage",
               ]}
             />
+          </Card>
+
+          <Card
+            title="Share &amp; Earn"
+            subtitle="What happens to the shopper's cashback share when a guest buys through a shared link"
+          >
+            <p className="text-sm text-slate-600">
+              When someone buys through a profit link without an account, there is no shopper to
+              pay, so the customer share of the commission is unclaimed. Choose who receives it.
+              When the buyer <em>is</em> signed in they get their cashback as normal and this
+              setting does not apply.
+            </p>
+
+            <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
+              {(
+                [
+                  {
+                    value: "SHARER" as const,
+                    title: "The sharer",
+                    body: "Added to their profit-link commission. The person whose link produced the sale is paid for it.",
+                  },
+                  {
+                    value: "PLATFORM" as const,
+                    title: "The platform",
+                    body: "Kept as platform margin. Sharers receive only their profit-link share.",
+                  },
+                ]
+              ).map((option) => {
+                const active = values.profitLinkGuestCashback === option.value;
+                return (
+                  <label
+                    key={option.value}
+                    className={`cursor-pointer rounded-xl border p-4 transition-colors ${
+                      active
+                        ? "border-violet-400 bg-violet-50/60"
+                        : "border-slate-200 hover:border-violet-200"
+                    }`}
+                  >
+                    <span className="flex items-center gap-2.5">
+                      <input
+                        type="radio"
+                        name="profitLinkGuestCashback"
+                        checked={active}
+                        onChange={() => set("profitLinkGuestCashback", option.value)}
+                        className="h-4 w-4"
+                      />
+                      <span className="text-sm font-semibold text-slate-900">{option.title}</span>
+                    </span>
+                    <span className="mt-1.5 block text-xs text-slate-500">{option.body}</span>
+                  </label>
+                );
+              })}
+            </div>
+
+            <p className="mt-3 rounded-xl bg-slate-50 px-3.5 py-2.5 text-xs text-slate-500">
+              Applies to sales recorded from now on. Transactions already stored keep the split
+              they were created with, so past payouts and reversals stay consistent.
+            </p>
+
+            <SaveBar keys={["profitLinkGuestCashback"]} />
           </Card>
 
           <Card title="Not available yet" subtitle="Deliberately absent rather than shown as switches that do nothing">

@@ -5,6 +5,7 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { generateUniqueReferralCode } from "@/lib/referralCode";
+import { generateUniqueUserCode } from "@/lib/username";
 
 const BCRYPT_COST = 10;
 
@@ -48,6 +49,8 @@ export async function POST(req: NextRequest) {
 
   const passwordHash = await bcrypt.hash(password, BCRYPT_COST);
   const referralCode = await generateUniqueReferralCode();
+  // Assigned up front so every account has a working goURL from day one.
+  const userCode = await generateUniqueUserCode();
 
   try {
     const user = await prisma.$transaction(async (tx) => {
@@ -59,6 +62,7 @@ export async function POST(req: NextRequest) {
           passwordHash,
           role: "USER",
           referralCode,
+      userCode,
           // Every account needs a wallet; creating it here keeps the invariant
           // that a user always has one, same as registration does.
           wallet: { create: {} },

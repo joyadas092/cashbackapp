@@ -3,6 +3,7 @@ import type { Prisma, TransactionStatus, WalletTxType } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { calculateDistribution, validateCommissionRule } from "@/lib/commission/engine";
 import { evaluateReferralEligibility } from "@/lib/referral/engine";
+import { getSetting } from "@/lib/settings";
 
 /**
  * Cuelinks postback processor (spec sections 11, 12).
@@ -90,6 +91,10 @@ function mapCuelinksStatus(raw: RawPostbackParams): TransactionStatus | null {
     default:
       return null;
   }
+}
+
+function round2(value: number): number {
+  return Math.round(value * 100) / 100;
 }
 
 function isUniqueConstraintError(e: unknown): boolean {
@@ -207,6 +212,50 @@ interface ClickWithProfitLink {
   profitLink: { id: string; userId: string } | null;
 }
 
+/**
+ * Reassigns the customer's cashback share on a guest profit-link sale.
+ *
+ * When someone buys through a shared link without an account there is no
+ * shopper to pay, so the customer share is unclaimed. Previously it was
+ * computed, stored against the transaction, and then credited to nobody — the
+ * money quietly stayed with the platform while the reports still showed it as
+ * the customer's.
+ *
+ * Settled here at creation time rather than at credit time so that the stored
+ * amounts are the truth: reversals subtract exactly what was credited, and
+ * admin reports add up, with no special cases downstream.
+ *
+ * Only guest sales are affected. If the buyer is signed in they get their
+ * cashback as normal and the sharer gets only the profit-link share.
+ */
+async function resolveGuestProfitLinkShare(
+  click: ClickWithProfitLink,
+  split: { customer: number; profitLink: number; platform: number }
+): Promise<{ customer: number; profitLink: number; platform: number }> {
+  const isGuestProfitLinkSale =
+    click.clickType === "PROFIT_LINK" && click.profitLink != null && !click.userId;
+
+  if (!isGuestProfitLinkSale || split.customer <= 0) {
+    return { customer: split.customer, profitLink: split.profitLink, platform: split.platform };
+  }
+
+  const destination = await getSetting("profitLinkGuestCashback");
+
+  if (destination === "SHARER") {
+    return {
+      customer: 0,
+      profitLink: round2(split.profitLink + split.customer),
+      platform: split.platform,
+    };
+  }
+
+  return {
+    customer: 0,
+    profitLink: split.profitLink,
+    platform: round2(split.platform + split.customer),
+  };
+}
+
 async function applyTransactionStatus(
   tx: TxClient,
   params: {
@@ -249,6 +298,7 @@ async function applyTransactionStatus(
     };
     validateCommissionRule(ruleInput);
     const split = calculateDistribution({ commissionAmount, rule: ruleInput });
+    const { customer, profitLink, platform } = await resolveGuestProfitLinkShare(click, split);
 
     transaction = await tx.transaction.create({
       data: {
@@ -260,10 +310,10 @@ async function applyTransactionStatus(
         orderId: merchantOrderId,
         saleAmount,
         commissionAmount,
-        customerAmount: split.customer,
-        profitLinkAmount: split.profitLink,
+        customerAmount: customer,
+        profitLinkAmount: profitLink,
         referralAmount: split.referral,
-        platformAmount: split.platform,
+        platformAmount: platform,
         status: "PENDING",
         rawPostbackPayload: rawPayload as Prisma.InputJsonValue,
         transactionDate: new Date(),

@@ -67,6 +67,13 @@ interface CampaignsListResponse {
     campaign_type: string;
     payout_type?: string;
     payout: string;
+    payout_currency?: string;
+    sub_ids_allowed?: boolean;
+    cashback_publishers_allowed?: boolean;
+    missing_transactions_accepted?: boolean;
+    cookie_duration?: string;
+    reporting_type?: string;
+    epc_90d?: string;
   }>;
   /** Present on list endpoints; absent on the search-by-id path. */
   meta?: {
@@ -92,6 +99,38 @@ interface TransactionsListResponse {
   }>;
 }
 
+type RawCampaign = CampaignsListResponse["data"][number];
+
+/**
+ * `open` campaigns need no application and are usable immediately, so they are
+ * "active" alongside `approved`. Treating anything-but-approved as inactive
+ * hid every open campaign — Shopsy and Nykaa among them.
+ */
+function mapCampaign(c: RawCampaign): CuelinksCampaign {
+  const accessStatus = c.access_status as CuelinksCampaign["accessStatus"];
+  const payoutPct =
+    c.payout_currency === "%" || c.payout_type?.includes("%") ? Number(c.payout) : undefined;
+
+  return {
+    campaignId: String(c.id),
+    name: c.name,
+    status: accessStatus === "approved" || accessStatus === "open" ? "active" : "inactive",
+    imageUrl: c.image ?? undefined,
+    domain: c.domain,
+    payoutType: c.payout_type,
+    payout: c.payout,
+    commissionType: payoutPct !== undefined ? "percentage" : "fixed",
+    commissionValue: payoutPct ?? Number(c.payout),
+    accessStatus,
+    subIdsAllowed: c.sub_ids_allowed,
+    cashbackPublishersAllowed: c.cashback_publishers_allowed,
+    missingTransactionsAccepted: c.missing_transactions_accepted,
+    cookieDuration: c.cookie_duration,
+    reportingType: c.reporting_type,
+    epc90d: c.epc_90d != null ? Number(c.epc_90d) : undefined,
+  };
+}
+
 export const realClient: CuelinksClient = {
   async listCampaigns(params: ListCampaignsParams = {}): Promise<CampaignPage> {
     const page = Math.max(1, params.page ?? 1);
@@ -105,15 +144,7 @@ export const realClient: CuelinksClient = {
     const res = await cuelinksFetch<CampaignsListResponse>(`/campaigns?${query.toString()}`);
 
     return {
-      campaigns: res.data.map((c) => ({
-        campaignId: String(c.id),
-        name: c.name,
-        status: c.access_status === "approved" ? "active" : "inactive",
-        imageUrl: c.image ?? undefined,
-        domain: c.domain,
-        payoutType: c.payout_type,
-        payout: c.payout,
-      })),
+      campaigns: res.data.map(mapCampaign),
       page: res.meta?.page ?? page,
       perPage: res.meta?.per_page ?? perPage,
       total: res.meta?.total ?? res.data.length,
@@ -122,18 +153,15 @@ export const realClient: CuelinksClient = {
   },
 
   async getCampaign(campaignId: string): Promise<CuelinksCampaign | null> {
-    const res = await cuelinksFetch<CampaignsListResponse>(`/campaigns?q=${encodeURIComponent(campaignId)}`);
+    // `id` looks the campaign up directly. The previous `q=` was a full-text
+    // search that happened to contain the number, which could miss the campaign
+    // entirely or match a different one whose name contained those digits.
+    const res = await cuelinksFetch<CampaignsListResponse>(
+      `/campaigns?id=${encodeURIComponent(campaignId)}`
+    );
     const match = res.data.find((c) => String(c.id) === campaignId);
     if (!match) return null;
-    return {
-      campaignId: String(match.id),
-      name: match.name,
-      status: match.access_status === "approved" ? "active" : "inactive",
-      imageUrl: match.image ?? undefined,
-      domain: match.domain,
-      payoutType: match.payout_type,
-      payout: match.payout,
-    };
+    return mapCampaign(match);
   },
 
   async convertLink(req: LinkConversionRequest): Promise<LinkConversionResult> {

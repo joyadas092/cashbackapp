@@ -5,6 +5,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import {
   Activity,
   Bell,
+  Compass,
   Gift,
   Home,
   LifeBuoy,
@@ -54,6 +55,7 @@ const NAV_ITEMS: Array<{ href: string; icon: LucideIcon; label: string; disabled
   { href: "/dashboard/orders", icon: Package, label: "Orders" },
   { href: "/dashboard/claims", icon: ReceiptText, label: "Cashback Claims" },
   { href: "/share-earn", icon: Link2, label: "Profit Links" },
+  { href: "/dashboard/go-links", icon: Compass, label: "goURL" },
   { href: "/dashboard/refer", icon: Users, label: "Refer & Earn" },
 ];
 

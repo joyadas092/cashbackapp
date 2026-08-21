@@ -194,6 +194,13 @@ model User {
   name         String
   role         UserRole   @default(USER)
   referralCode String     @unique @map("referral_code")
+  /// Immutable 5-character handle assigned at signup. goURLs built on it keep
+  /// working after a user changes their username, which is why it never changes.
+  userCode     String     @unique @map("user_code")
+  /// Optional handle the user picks in settings. Resolves in a goURL alongside
+  /// userCode. Stored lowercase so lookups are case-insensitive without a
+  /// functional index.
+  username     String?    @unique
   riskStatus   RiskStatus @default(NORMAL) @map("risk_status")
   createdAt    DateTime   @default(now()) @map("created_at")
   updatedAt    DateTime   @updatedAt @map("updated_at")
@@ -465,11 +472,21 @@ model Click {
 // Share & Earn (profit links)
 // ---------------------------------------------------------------------------
 
+/// How a profit link came to exist. A goURL is generated on first use from
+/// /go/<username>/<store>, rather than being created by hand in Share & Earn.
+enum ProfitLinkSource {
+  MANUAL
+  GO_URL
+
+  @@map("profit_link_source")
+}
+
 model ProfitLink {
   id             String           @id @default(cuid())
   code           String           @unique
   userId         String           @map("user_id")
   storeId        String           @map("store_id")
+  source         ProfitLinkSource @default(MANUAL)
   campaignId     String?          @map("campaign_id")
   originalUrl    String           @map("original_url")
   destinationUrl String           @map("destination_url")
@@ -485,6 +502,10 @@ model ProfitLink {
 
   @@index([userId])
   @@index([code])
+  /// A partial unique index on (user_id, store_id) WHERE source = 'GO_URL'
+  /// keeps exactly one goURL link per user per store, while leaving manual
+  /// links unconstrained — a user may create many of those for one store.
+  /// Prisma cannot express a partial index, so it lives in the migration SQL.
   @@map("profit_links")
 }
 

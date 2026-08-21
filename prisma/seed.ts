@@ -1,4 +1,5 @@
 import { PrismaClient, CashbackType } from "@prisma/client";
+import { createHash } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { publicLogoUrl } from "../src/lib/logo";
 
@@ -279,6 +280,7 @@ async function seedReferralDemo(referrerId: string) {
         name: friend.name,
         role: "USER",
         referralCode: referralCode(friend.email),
+        userCode: userCode(friend.email),
         createdAt: joinedAt,
       },
     });
@@ -957,6 +959,14 @@ function referralCode(seed: string) {
   return seed.toUpperCase().slice(0, 8);
 }
 
+/**
+ * Deterministic 5-character goURL handle, so re-seeding keeps the same
+ * /go/<code>/<store> links working instead of minting new ones each run.
+ */
+function userCode(seed: string) {
+  return createHash("sha256").update(seed).digest("hex").slice(0, 5);
+}
+
 async function main() {
   console.log("Seeding categories...");
   const categoryBySlug = new Map<string, string>();
@@ -1089,6 +1099,7 @@ async function main() {
       name: "Admin",
       role: "ADMIN",
       referralCode: referralCode("admin0001"),
+      userCode: userCode("admin0001"),
     },
   });
   await prisma.wallet.upsert({
@@ -1107,6 +1118,7 @@ async function main() {
       name: "Demo User",
       role: "USER",
       referralCode: referralCode("demo0001"),
+      userCode: userCode("demo0001"),
     },
   });
   await prisma.wallet.upsert({

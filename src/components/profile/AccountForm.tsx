@@ -11,15 +11,24 @@ const label = "text-sm font-medium text-slate-700";
 export function AccountForm({
   initial,
 }: {
-  initial: { name: string; email: string; phone: string; referralCode: string };
+  initial: {
+    name: string;
+    email: string;
+    phone: string;
+    referralCode: string;
+    username: string;
+    userCode: string;
+  };
 }) {
   const router = useRouter();
   const [name, setName] = useState(initial.name);
   const [phone, setPhone] = useState(initial.phone);
+  const [username, setUsername] = useState(initial.username);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
-  const dirty = name !== initial.name || phone !== initial.phone;
+  const dirty =
+    name !== initial.name || phone !== initial.phone || username !== initial.username;
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -29,7 +38,13 @@ export function AccountForm({
     const res = await fetch("/api/profile/account", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, phone }),
+      body: JSON.stringify({
+        name,
+        phone,
+        // Omitted when unchanged so saving the form never re-validates a
+        // username the user did not touch.
+        ...(username !== initial.username ? { username } : {}),
+      }),
     });
     const body = await res.json().catch(() => ({}));
     setSaving(false);
@@ -89,6 +104,34 @@ export function AccountForm({
           <p className="mt-1 text-xs text-slate-400">
             Your email is your login, so changing it needs verification. Contact support to update
             it.
+          </p>
+        </div>
+
+        <div className="sm:col-span-2">
+          <label htmlFor="acc-username" className={label}>
+            goURL Username
+          </label>
+          <div className="mt-1.5 flex items-center overflow-hidden rounded-xl border border-slate-200 focus-within:border-violet-400">
+            <span className="shrink-0 border-r border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-500">
+              /go/
+            </span>
+            <input
+              id="acc-username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9]/g, ""))}
+              placeholder={initial.userCode}
+              maxLength={20}
+              aria-describedby="acc-username-help"
+              className="min-w-0 flex-1 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400"
+            />
+            <span className="shrink-0 border-l border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-500">
+              /flipkart
+            </span>
+          </div>
+          <p id="acc-username-help" className="mt-1 text-xs text-slate-400">
+            Lowercase letters and numbers, 3–20 characters. Your permanent code{" "}
+            <span className="font-semibold text-slate-500">{initial.userCode}</span> keeps working
+            either way, so links you have already shared never break.
           </p>
         </div>
 

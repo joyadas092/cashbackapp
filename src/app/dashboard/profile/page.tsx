@@ -32,10 +32,12 @@ export default async function ProfilePage() {
   if (!user) redirect("/login");
 
   return (
-    <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6">
+    <div className="mx-auto max-w-[1400px] px-3.5 py-5 sm:px-6 sm:py-6">
       <header>
-        <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">Settings</h1>
-        <p className="mt-1 text-slate-500">
+        <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">
+          Settings
+        </h1>
+        <p className="mt-1 text-sm text-slate-500 sm:text-base">
           Manage your account, payout details and password.
         </p>
       </header>
@@ -52,6 +54,8 @@ export default async function ProfilePage() {
               email: user.email,
               phone: user.phone ?? "",
               referralCode: user.referralCode,
+              username: user.username ?? "",
+              userCode: user.userCode,
             }}
           />
 

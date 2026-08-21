@@ -18,6 +18,7 @@ const bodySchema = z.object({
 
   minWithdrawalAmount: z.coerce.number().min(1).max(1_000_000).optional(),
   maxWithdrawalAmount: z.coerce.number().min(1).max(10_000_000).optional(),
+  profitLinkGuestCashback: z.enum(["SHARER", "PLATFORM"]).optional(),
   // Zero is meaningful here: never require a PAN.
   panRequiredAboveAmount: z.coerce.number().min(0).max(10_000_000).optional(),
   payoutMethods: z

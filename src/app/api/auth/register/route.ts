@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
 import { registerSchema } from "@/lib/validation/schemas";
 import { generateUniqueReferralCode } from "@/lib/referralCode";
+import { generateUniqueUserCode } from "@/lib/username";
 import { getSetting } from "@/lib/settings";
 
 export async function POST(req: NextRequest) {
@@ -35,6 +36,8 @@ export async function POST(req: NextRequest) {
   const passwordHash = await bcrypt.hash(password, 10);
 
   const referralCode = await generateUniqueReferralCode();
+  // Assigned up front so every account has a working goURL from day one.
+  const userCode = await generateUniqueUserCode();
 
   // Referral attribution: an explicit code in the request body wins; falls
   // back to the referral_code cookie set by /refer/[code] for users who
@@ -55,7 +58,7 @@ export async function POST(req: NextRequest) {
 
   const user = await prisma.$transaction(async (tx) => {
     const created = await tx.user.create({
-      data: { name, email, passwordHash, referralCode },
+      data: { name, email, passwordHash, referralCode, userCode },
     });
     await tx.wallet.create({ data: { userId: created.id } });
 

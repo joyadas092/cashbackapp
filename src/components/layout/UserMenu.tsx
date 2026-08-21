@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ChevronDown,
+  Compass,
   LayoutDashboard,
   LifeBuoy,
   Link2,
@@ -68,6 +69,7 @@ export function UserMenu({
               { href: "/dashboard/claims", icon: ReceiptText, label: "Cashback Claims" },
               { href: "/stores", icon: Store, label: "All Stores" },
               { href: "/share-earn", icon: Link2, label: "Profit Links" },
+              { href: "/dashboard/go-links", icon: Compass, label: "goURL" },
               { href: "/dashboard/refer", icon: Users, label: "Refer & Earn" },
               { href: "/dashboard/help", icon: LifeBuoy, label: "Help & Support" },
               { href: "/dashboard/profile", icon: Settings, label: "Settings" },

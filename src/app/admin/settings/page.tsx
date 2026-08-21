@@ -42,6 +42,7 @@ export default async function AdminSettingsPage() {
           maintenanceMessage: settings.maintenanceMessage,
           affiliateEnabled: settings.affiliateEnabled,
           referralEnabled: settings.referralEnabled,
+          profitLinkGuestCashback: settings.profitLinkGuestCashback,
           minWithdrawalAmount: settings.minWithdrawalAmount,
           maxWithdrawalAmount: settings.maxWithdrawalAmount,
           panRequiredAboveAmount: settings.panRequiredAboveAmount,
